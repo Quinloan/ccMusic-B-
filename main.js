@@ -105,11 +105,27 @@ function signWbi(params) {
 async function initSession() {
   const saved = readStore();
   if (saved && saved.cookies) cookies = Object.assign({}, saved.cookies);
-  const spi = await apiGet(API, '/x/frontend/finger/spi');
-  if (spi && spi.data && spi.data.b_3) cookies.buvid3 = spi.data.b_3;
-  if (spi && spi.data && spi.data.b_4) cookies.buvid4 = spi.data.b_4;
-  await refreshWbi();
+  // 设备指纹与 WBI 密钥互不依赖，并行取
+  await Promise.all([
+    apiGet(API, '/x/frontend/finger/spi').then((spi) => {
+      if (spi && spi.data && spi.data.b_3) cookies.buvid3 = spi.data.b_3;
+      if (spi && spi.data && spi.data.b_4) cookies.buvid4 = spi.data.b_4;
+    }),
+    refreshWbi(),
+  ]);
   persistCookies();
+}
+
+// 单例：启动时后台预热，任何 B 站 IPC 调用前确保会话就绪
+let sessionReady = null;
+function ensureSession() {
+  if (!sessionReady) {
+    sessionReady = initSession().catch((e) => {
+      sessionReady = null;
+      throw e;
+    });
+  }
+  return sessionReady;
 }
 
 function persistCookies() {
@@ -156,6 +172,7 @@ ipcMain.handle('login:logout', () => {
 });
 
 ipcMain.handle('bili:search', async (_e, keyword, page = 1) => {
+  await ensureSession();
   await ensureWbi();
   const params = signWbi({ search_type: 'video', keyword, page, order: 'totalrank' });
   const j = await apiGet(API, '/x/web-interface/wbi/search/type', params);
@@ -180,6 +197,7 @@ ipcMain.handle('bili:search', async (_e, keyword, page = 1) => {
 });
 
 ipcMain.handle('bili:video', async (_e, id) => {
+  await ensureSession();
   // 同时支持 BV 号、av 号
   const param = /^BV/i.test(id) ? { bvid: id } : { aid: String(id).replace(/^av/i, '') };
   const j = await apiGet(API, '/x/web-interface/view', param);
@@ -216,6 +234,7 @@ ipcMain.handle('bili:playurl', async (_e, bvid, cid) => {
   const hit = streamCache.get(key);
   if (hit && hit.expireAt > Date.now()) return hit.payload;
 
+  await ensureSession();
   await ensureWbi();
   const j = await apiGet(
     API,
@@ -293,6 +312,7 @@ ipcMain.handle('diag:env', () => ({
 }));
 
 ipcMain.handle('diag:api', async (_e, input) => {
+  await ensureSession();
   const steps = [];
   const push = (name, ok, detail, ms) => steps.push({ name, ok, detail, ms });
   const m = String(input || '').match(/BV[0-9A-Za-z]{10}/);
@@ -466,8 +486,9 @@ app.whenReady().then(async () => {
   const undici = await import('undici');
   ufetch = undici.fetch;
   agent = new undici.Agent({ allowH2: true });
-  await initSession();
+  // 关键：窗口先开，网络会话后台预热，启动不再被接口请求阻塞
   createWindow();
+  ensureSession().catch((e) => console.error('[session]', e.message));
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
