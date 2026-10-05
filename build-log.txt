@@ -1,0 +1,6 @@
+  • electron-builder  version=26.15.3 os=10.0.22621
+  • loaded configuration  file=package.json ("build" field)
+  • executing @electron/rebuild  electronVersion=44.5.1 arch=x64 buildFromSource=false workspaceRoot=C:\Users\liungaxing\WorkBuddy\2026-10-05-20-27-19\bili-radio projectDir=./ appDir=./
+  • installing native dependencies  arch=x64
+  • completed installing native dependencies
+  • packaging       platform=win32 arch=x64 electron=44.5.1 appOutDir=release-v1.1.0\win-unpacked

@@ -22,7 +22,7 @@
     "appId": "com.ccmusic.app",
     "productName": "ccMusic",
     "directories": {
-      "output": "release"
+      "output": "release-final"
     },
     "files": [
       "main.js",
