@@ -22,15 +22,17 @@
     "appId": "com.ccmusic.app",
     "productName": "ccMusic",
     "directories": {
-      "output": "release-final"
+      "output": "release-icon"
     },
     "files": [
       "main.js",
       "preload.cjs",
       "renderer/**",
-      "package.json"
+      "package.json",
+      "assets/icon.png"
     ],
     "win": {
+      "icon": "assets/icon.ico",
       "target": [
         {
           "target": "nsis",
