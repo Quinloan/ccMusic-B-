@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src * data:; media-src *; style-src 'self' 'unsafe-inline'; script-src 'self'" />
+<title>ccMusic</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="side-label">我的收藏夹</div>
+    <div id="folders" class="folders"></div>
+    <div class="newfolder">
+      <input id="nfName" type="text" placeholder="新建收藏夹" />
+      <button id="nfBtn" title="新建">＋</button>
+    </div>
+    <div class="spacer"></div>
+    <div class="side-label">系统</div>
+    <nav class="sysnav">
+      <div class="nav-item" data-view="diag">诊断</div>
+      <div class="nav-item" data-view="about">关于</div>
+    </nav>
+    <div id="account" class="account">未登录</div>
+  </aside>
+
+  <div class="right-col">
+    <header class="topbar">
+      <div class="brand"><span class="logo-dot"></span>ccMusic</div>
+      <div class="searchbox">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.8-3.8"></path>
+        </svg>
+        <input id="kw" type="text" placeholder="搜索关键词，或直接粘贴 BV 号 / av 号 / B 站链接，回车查找" />
+        <button id="go" class="primary">搜索</button>
+      </div>
+      <div class="top-right"></div>
+    </header>
+
+    <main class="main">
+      <section id="view-library" class="view">
+        <div class="view-head">
+          <h2 id="libTitle">我的收藏夹</h2>
+          <div class="head-right">
+            <span id="libCount" class="muted"></span>
+            <button id="playAll" class="primary">播放全部</button>
+          </div>
+        </div>
+        <div id="list" class="list"></div>
+      </section>
+
+      <section id="view-search" class="view" hidden>
+        <div id="results" class="list"></div>
+        <div id="moreWrap" class="more-wrap" hidden><button id="more">加载更多</button></div>
+      </section>
+
+      <section id="view-diag" class="view" hidden>
+        <div class="page">
+          <h2>诊断</h2>
+          <div id="diagUpdateBanner" class="update-banner" hidden></div>
+
+          <div class="sec">
+            <div class="sec-title">运行环境</div>
+            <div class="sec-desc">当前应用的运行时信息</div>
+            <div class="card" id="envRows"></div>
+          </div>
+
+          <div class="sec">
+            <div class="sec-title">API 诊断</div>
+            <div class="sec-desc">验证从视频解析到音频直链的完整链路</div>
+            <div class="card">
+              <div class="row-line">
+                <div class="rl-main">
+                  <b>BV 号解析测试</b>
+                  <div class="muted">输入一个 BV 号，依次测试签名、解析、直链与 CDN 可达性</div>
+                </div>
+                <div class="rl-actions">
+                  <input id="diagBv" type="text" placeholder="BV…" />
+                  <button id="diagRun">测试</button>
+                </div>
+              </div>
+              <div id="diagSteps"></div>
+            </div>
+          </div>
+
+          <div class="sec">
+            <div class="sec-title">维护</div>
+            <div class="sec-desc">本地数据与诊断信息，均保存在本机</div>
+            <div class="card">
+              <div class="row-line">
+                <div class="rl-main"><b>数据目录</b><div class="muted">收藏夹与登录凭据保存在本机</div></div>
+                <div class="rl-actions"><button id="openData">打开目录</button></div>
+              </div>
+              <div class="row-line">
+                <div class="rl-main"><b>导出诊断包</b><div class="muted">包含运行环境与歌单数据，不包含登录凭据</div></div>
+                <div class="rl-actions"><button id="exportDiag">导出</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-about" class="view" hidden>
+        <div class="page">
+          <h2>关于</h2>
+          <div id="aboutUpdateBanner" class="update-banner" hidden></div>
+
+          <div class="product-card">
+            <svg class="app-logo" viewBox="0 0 64 64" width="76" height="76">
+              <circle cx="32" cy="32" r="30" fill="#185fa5"></circle>
+              <rect x="25" y="17" width="3.2" height="24" rx="1.6" fill="#fff"></rect>
+              <rect x="37" y="17" width="3.2" height="24" rx="1.6" fill="#fff"></rect>
+              <path d="M25 18 L40.2 14 L40.2 19 L25 23 Z" fill="#fff"></path>
+              <circle cx="26.6" cy="43" r="4.6" fill="#fff"></circle>
+              <circle cx="38.6" cy="43" r="4.6" fill="#fff"></circle>
+            </svg>
+            <div class="pname">ccMusic</div>
+            <div class="pdesc">B 站纯音频连播播放器</div>
+            <div class="pver">版本 <span id="aboutVer"></span></div>
+            <a id="relLink" class="plink">GitHub Releases</a>
+          </div>
+
+          <div class="sec">
+            <div class="sec-title">更新设置</div>
+            <div class="sec-desc">更新只在 GitHub 下载后手动安装</div>
+            <div class="card">
+              <div class="row-line">
+                <div class="rl-main"><b>检查更新</b><div class="muted">从 GitHub Releases 检查新版本</div></div>
+                <div class="rl-actions"><button id="checkBtn">检查更新</button></div>
+              </div>
+              <div class="row-line">
+                <div class="rl-main"><b>自动检查</b><div class="muted">启动时后台检查，不会自动安装</div></div>
+                <div class="rl-actions">
+                  <label class="switch"><input type="checkbox" id="autoCheck" /><span class="slider"></span></label>
+                </div>
+              </div>
+              <div class="row-line">
+                <div class="rl-main"><b>最近检查</b></div>
+                <span class="muted" id="lastCheck">从未</span>
+              </div>
+            </div>
+            <div id="updateResult"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<footer class="bar">
+  <img id="bCover" class="cover" />
+  <div class="now">
+    <div class="t" id="bTitle">未在播放</div>
+    <div class="u" id="bUp">—</div>
+  </div>
+  <div class="ctrls">
+    <button id="prev" title="上一首">⏮</button>
+    <button id="play" class="primary" title="播放/暂停">▶</button>
+    <button id="next" title="下一首">⏭</button>
+    <button id="mode" title="播放模式">🔁</button>
+  </div>
+  <div class="seek">
+    <span class="time" id="cur">00:00</span>
+    <input id="seek" type="range" min="0" max="1000" value="0" />
+    <span class="time" id="dur">00:00</span>
+  </div>
+  <div class="right">
+    <span id="quality" class="quality"></span>
+    <span class="volico">🔊</span>
+    <input id="vol" type="range" min="0" max="100" value="80" />
+  </div>
+</footer>
+
+<div id="loginModal" class="modal" hidden>
+  <div class="modal-box">
+    <h3>扫码登录 B 站</h3>
+    <img id="qr" alt="二维码" />
+    <div id="qrTip" class="muted">请使用 B 站 App 扫码</div>
+    <button id="loginClose">关闭</button>
+  </div>
+</div>
+
+<audio id="audio"></audio>
+<script src="app.js"></script>
+</body>
+</html>
