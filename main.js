@@ -439,6 +439,7 @@ ipcMain.handle('update:check', async () => {
 
 // ---------------------------------------------------------------- 窗口
 function createWindow() {
+  console.log('[boot] 窗口创建于 ' + Math.round(process.uptime() * 1000) + 'ms');
   const win = new BrowserWindow({
     width: 1120,
     height: 760,
