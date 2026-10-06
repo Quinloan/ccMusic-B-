@@ -94,7 +94,7 @@ const LOGO_SRC = '../assets/icon.png';
 let accountState = { logged: false };
 
 async function checkLogin() {
-  const box = $('#account');
+  const av = $('#avatarImg');
   let st;
   try {
     st = await B.loginState();
@@ -102,28 +102,17 @@ async function checkLogin() {
     st = { logged: false, stale: true };
   }
   if (st.logged) {
-    box.innerHTML = `<img src="${esc(st.face || '')}" />
-      <div class="a-main">
-        <div class="a-name">${esc(st.name || '已登录')}</div>
-        <div class="a-sub">Lv${st.level ?? '-'} · 点按打开账号菜单</div>
-      </div>`;
-    box.title = '账号';
+    av.onerror = () => { av.onerror = null; av.src = LOGO_SRC; };
+    av.src = st.face || LOGO_SRC;
+    av.title = (st.name || '已登录') + ' · 点按打开账号菜单';
     accountState = { logged: true, st };
   } else if (st.stale) {
-    box.innerHTML = `<img class="logo-avatar" src="${LOGO_SRC}" alt="" />
-      <div class="a-main">
-        <div class="a-name">登录状态检查失败</div>
-        <div class="a-sub">点击重试</div>
-      </div>`;
-    box.title = '点击重试';
+    av.src = LOGO_SRC;
+    av.title = '登录状态检查失败 · 点按重试';
     accountState = { logged: false, stale: true };
   } else {
-    box.innerHTML = `<img class="logo-avatar" src="${LOGO_SRC}" alt="" />
-      <div class="a-main">
-        <div class="a-name">未登录</div>
-        <div class="a-sub">点击登录，解锁高音质</div>
-      </div>`;
-    box.title = '点击登录';
+    av.src = LOGO_SRC;
+    av.title = '未登录 · 点按登录';
     accountState = { logged: false };
   }
 }
@@ -575,8 +564,9 @@ async function initAbout() {
 // ---------------------------------------------------------------- 事件
 $$('.nav-item').forEach((el) => { el.onclick = () => showView(el.dataset.view); });
 
-// 账号卡片 → 二级菜单；点击菜单外自动收起
-$('#account').onclick = () => {
+// 标题栏头像 → 二级菜单；点击菜单外自动收起
+$('#avatarBtn').onclick = (e) => {
+  e.stopPropagation();
   const m = $('#accountMenu');
   if (m.hidden) {
     if (accountState.stale) checkLogin();
@@ -585,7 +575,7 @@ $('#account').onclick = () => {
 };
 document.addEventListener('click', (e) => {
   const m = $('#accountMenu');
-  if (!m.hidden && !m.contains(e.target) && !$('#account').contains(e.target)) {
+  if (!m.hidden && !m.contains(e.target) && !$('#avatarBtn').contains(e.target)) {
     m.hidden = true;
   }
 });
