@@ -422,6 +422,7 @@ async function playTrack(it, idx) {
     $('#bUp').textContent = it.up || it.author || '';
     $('#quality').textContent = track.kbps ? `${track.kbps}kbps` : '音轨';
     $('#play').textContent = '⏸';
+    B.setTrayTip(it.title); // 托盘悬停时显示当前曲目
     renderList();
   } catch (e) {
     toast('播放失败：' + e.message);
@@ -559,6 +560,8 @@ async function initAbout() {
   $('#aboutVer').textContent = 'v' + env.version;
   $('#relLink').onclick = () => B.openExternal('https://github.com/' + env.repo + '/releases');
   $('#autoCheck').checked = localStorage.autoCheck !== '0';
+  $('#mediaKeys').checked = localStorage.mediaKeys !== '0';
+  $('#closeToTray').checked = localStorage.closeToTray !== '0';
 }
 
 // ---------------------------------------------------------------- 事件
@@ -584,6 +587,17 @@ document.addEventListener('click', (e) => {
 $('#wMin').onclick = () => B.winMin();
 $('#wMax').onclick = () => B.winMaxToggle();
 $('#wClose').onclick = () => B.winClose();
+
+// 全局媒体键 / 系统托盘菜单发来的播放指令
+B.onMediaCmd((cmd) => {
+  if (cmd === 'playPause') $('#play').click();
+  else if (cmd === 'next') $('#next').click();
+  else if (cmd === 'prev') $('#prev').click();
+  else if (cmd === 'stop' && !audio.paused) $('#play').click();
+});
+// 首次同步一次开关状态给主进程（默认都开）
+B.setMediaKeys(localStorage.mediaKeys !== '0');
+B.setCloseToTray(localStorage.closeToTray !== '0');
 B.getVersion().then((v) => { $('#sideVer').textContent = 'v' + v; });
 $('#diagRun').onclick = runDiag;
 $('#diagBv').onkeydown = (e) => { if (e.key === 'Enter') runDiag(); };
@@ -596,6 +610,21 @@ $('#checkBtn').onclick = () => doCheck(false);
 $('#autoCheck').onchange = () => {
   localStorage.autoCheck = $('#autoCheck').checked ? '1' : '0';
   toast($('#autoCheck').checked ? '已开启自动检查' : '已关闭自动检查');
+};
+$('#mediaKeys').onchange = () => {
+  const on = $('#mediaKeys').checked;
+  localStorage.mediaKeys = on ? '1' : '0';
+  B.setMediaKeys(on);
+  toast(on ? '已开启全局媒体键' : '已关闭全局媒体键');
+};
+$('#closeToTray').onchange = () => {
+  const on = $('#closeToTray').checked;
+  localStorage.closeToTray = on ? '1' : '0';
+  B.setCloseToTray(on);
+  toast(on ? '关闭窗口后将缩到托盘' : '关闭窗口即退出程序');
+};
+$('#quitBtn').onclick = () => {
+  if (confirm('确定退出 ccMusic 吗？')) B.appQuit();
 };
 
 $('#go').onclick = handleSearch;

@@ -1,7 +1,10 @@
 // B 站纯音频连播 · Electron 主进程（CommonJS）
 // 关键点：用 session.webRequest 给渲染进程发出的音频/图片请求注入 Referer，
 // 因此不需要任何本地代理中转，音频流由 Chromium 直连 B 站 CDN。
-const { app, BrowserWindow, ipcMain, session, shell, Menu, clipboard, dialog } = require('electron');
+const {
+  app, BrowserWindow, ipcMain, session, shell, Menu, clipboard, dialog,
+  Tray, nativeImage, globalShortcut,
+} = require('electron');
 const { createHash } = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -321,6 +324,19 @@ ipcMain.handle('win:close', (e) => {
   if (w) w.close();
 });
 
+// 托盘 / 全局媒体键
+ipcMain.handle('app:quit', () => quitApp());
+ipcMain.handle('tray:title', (_e, t) => {
+  if (tray) tray.setToolTip(t ? `ccMusic · ${t}` : 'ccMusic');
+});
+ipcMain.handle('settings:mediaKeys', (_e, on) => {
+  mediaKeysOn = !!on;
+  applyMediaKeys();
+});
+ipcMain.handle('settings:closeToTray', (_e, on) => {
+  closeToTray = !!on;
+});
+
 // ---------------------------------------------------------------- 诊断
 ipcMain.handle('diag:env', () => ({
   version: app.getVersion(),
@@ -503,6 +519,88 @@ function setupAutoUpdater() {
   setInterval(check, 4 * 60 * 60 * 1000); // 之后每 4 小时
 }
 
+// ---------------------------------------------------------------- 托盘 & 全局媒体键
+let mainWin = null;
+let tray = null;
+let quitting = false;          // 真正退出（托盘菜单退出）时为 true
+let closeToTray = true;        // 关闭窗口时最小化到托盘，继续后台播放
+let mediaKeysOn = true;        // 全局媒体键开关
+let mediaRegistered = false;
+
+function sendMedia(cmd) {
+  if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('media:cmd', cmd);
+}
+
+function toggleWindow() {
+  if (!mainWin || mainWin.isDestroyed()) return;
+  if (mainWin.isVisible()) {
+    if (mainWin.isMinimized()) mainWin.restore();
+    mainWin.focus();
+  } else {
+    mainWin.show();
+    mainWin.focus();
+  }
+}
+
+function quitApp() {
+  quitting = true;
+  app.quit();
+}
+
+function buildTrayMenu() {
+  return Menu.buildFromTemplate([
+    { label: '显示 / 隐藏 ccMusic', click: () => toggleWindow() },
+    { type: 'separator' },
+    { label: '播放 / 暂停', click: () => sendMedia('playPause') },
+    { label: '上一首', click: () => sendMedia('prev') },
+    { label: '下一首', click: () => sendMedia('next') },
+    { type: 'separator' },
+    { label: '退出 ccMusic', click: () => quitApp() },
+  ]);
+}
+
+function setupTray() {
+  try {
+    const p = path.join(__dirname, 'assets', 'icon.png');
+    const raw = nativeImage.createFromPath(p);
+    const img = raw.isEmpty() ? raw : raw.resize({ width: 32, height: 32 });
+    tray = new Tray(img);
+    tray.setToolTip('ccMusic');
+    tray.setContextMenu(buildTrayMenu());
+    tray.on('click', () => toggleWindow());
+    console.log('[tray] 托盘已就绪');
+  } catch (e) {
+    console.error('[tray] 初始化失败：' + e.message);
+  }
+}
+
+// Windows / macOS 支持把键盘上的多媒体键注册为全局快捷键
+const MEDIA_KEYS = {
+  MediaPlayPause: 'playPause',
+  MediaNextTrack: 'next',
+  MediaPreviousTrack: 'prev',
+  MediaStop: 'stop',
+};
+
+function applyMediaKeys() {
+  if (mediaKeysOn && !mediaRegistered) {
+    for (const [acc, cmd] of Object.entries(MEDIA_KEYS)) {
+      try {
+        if (!globalShortcut.register(acc, () => sendMedia(cmd))) {
+          console.warn('[media] 注册失败：' + acc);
+        }
+      } catch (e) {
+        console.warn('[media] ' + acc + ' ' + e.message);
+      }
+    }
+    mediaRegistered = true;
+    console.log('[media] 已注册 ' + Object.keys(MEDIA_KEYS).length + ' 个媒体键');
+  } else if (!mediaKeysOn && mediaRegistered) {
+    globalShortcut.unregisterAll();
+    mediaRegistered = false;
+  }
+}
+
 // ---------------------------------------------------------------- 窗口
 function createWindow() {
   console.log('[boot] 窗口创建于 ' + Math.round(process.uptime() * 1000) + 'ms');
@@ -520,6 +618,15 @@ function createWindow() {
       nodeIntegration: false,
       backgroundThrottling: false, // 后台不降频，保证连播不断
     },
+  });
+
+  mainWin = win;
+  // 关窗口默认进托盘后台续播；只有 tray 菜单「退出」或开关关闭时才真正退出
+  win.on('close', (e) => {
+    if (!quitting && closeToTray && tray) {
+      e.preventDefault();
+      win.hide();
+    }
   });
 
   // 关键：给渲染进程发出的媒体/图片请求补齐 Referer 与 UA
@@ -558,6 +665,9 @@ app.whenReady().then(async () => {
   createWindow();
   ensureSession().catch((e) => console.error('[session]', e.message));
   setupAutoUpdater();
+  setupTray();
+  applyMediaKeys(); // 默认开启，渲染端读完设置后会再同步一次
+  app.on('before-quit', () => globalShortcut.unregisterAll());
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });

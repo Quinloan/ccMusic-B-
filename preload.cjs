@@ -20,6 +20,13 @@ contextBridge.exposeInMainWorld('api', {
   winMaxToggle: () => ipcRenderer.invoke('win:maxToggle'),
   winClose: () => ipcRenderer.invoke('win:close'),
 
+  // 系统托盘 / 全局媒体键
+  onMediaCmd: (cb) => ipcRenderer.on('media:cmd', (_e, cmd) => cb(cmd)),
+  setTrayTip: (text) => ipcRenderer.invoke('tray:title', text),
+  appQuit: () => ipcRenderer.invoke('app:quit'),
+  setMediaKeys: (on) => ipcRenderer.invoke('settings:mediaKeys', !!on),
+  setCloseToTray: (on) => ipcRenderer.invoke('settings:closeToTray', !!on),
+
   // 诊断 / 关于 / 更新
   diagEnv: () => ipcRenderer.invoke('diag:env'),
   diagApi: (bv) => ipcRenderer.invoke('diag:api', bv),
