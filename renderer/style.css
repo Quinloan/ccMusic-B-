@@ -305,6 +305,14 @@ button.primary:hover { opacity: .9; color: #fff; }
   color: var(--accent); font-weight: 600;
 }
 .quality:hover { border-color: var(--accent); }
+/* 设置区下拉选择（如：关闭按钮行为） */
+.sel {
+  min-width: 140px; padding: 6px 30px 6px 10px; font-size: 12.5px;
+  border: 1px solid var(--line); border-radius: 8px; outline: none;
+  background: #fff url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 8px center / 13px;
+  color: var(--text); cursor: pointer; appearance: none; -webkit-appearance: none;
+}
+.sel:hover, .sel:focus { border-color: var(--accent); }
 
 /* 登录弹窗 */
 .modal {

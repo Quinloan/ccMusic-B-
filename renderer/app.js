@@ -591,7 +591,7 @@ async function initAbout() {
   $('#relLink').onclick = () => B.openExternal('https://github.com/' + env.repo + '/releases');
   $('#autoCheck').checked = localStorage.autoCheck !== '0';
   $('#mediaKeys').checked = localStorage.mediaKeys !== '0';
-  $('#closeToTray').checked = localStorage.closeToTray !== '0';
+  $('#closeAction').value = localStorage.closeToTray !== '0' ? 'tray' : 'quit';
   try {
     $('#autoLaunch').checked = !!(await B.getAutoLaunch());
   } catch (e) {
@@ -655,11 +655,11 @@ $('#mediaKeys').onchange = () => {
   B.setMediaKeys(on);
   toast(on ? '已开启全局媒体键' : '已关闭全局媒体键');
 };
-$('#closeToTray').onchange = () => {
-  const on = $('#closeToTray').checked;
-  localStorage.closeToTray = on ? '1' : '0';
-  B.setCloseToTray(on);
-  toast(on ? '关闭窗口后将缩到托盘' : '关闭窗口即退出程序');
+$('#closeAction').onchange = () => {
+  const tray = $('#closeAction').value === 'tray';
+  localStorage.closeToTray = tray ? '1' : '0';
+  B.setCloseToTray(tray);
+  toast(tray ? '点 × 将缩到托盘继续播放' : '点 × 将直接退出程序');
 };
 $('#autoLaunch').onchange = async () => {
   const on = $('#autoLaunch').checked;

@@ -151,9 +151,12 @@
                 </div>
               </div>
               <div class="row-line">
-                <div class="rl-main"><b>关闭按钮行为</b><div class="muted">开：点右上角 × 缩到托盘继续播放；关：点 × 直接退出程序</div></div>
+                <div class="rl-main"><b>关闭按钮行为</b><div class="muted">点右上角 × 时的动作</div></div>
                 <div class="rl-actions">
-                  <label class="switch"><input type="checkbox" id="closeToTray" /><span class="slider"></span></label>
+                  <select id="closeAction" class="sel" title="点右上角 × 时的动作">
+                    <option value="tray">最小化到托盘</option>
+                    <option value="quit">退出应用</option>
+                  </select>
                 </div>
               </div>
               <div class="row-line">
