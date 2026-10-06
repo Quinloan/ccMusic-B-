@@ -173,18 +173,18 @@ body {
 }
 /* 侧栏顶部品牌区（收藏夹板块之上，留足间距把下方板块推下去） */
 .side-brand {
-  display: flex; align-items: center; gap: 10px;
-  padding: 2px 16px 22px; font-size: 15px; font-weight: 600;
+  display: flex; align-items: center; gap: 11px;
+  padding: 2px 16px 22px; font-size: 16px; font-weight: 600;
 }
-.side-brand-logo { width: 28px; height: 28px; border-radius: 8px; object-fit: cover; }
+.side-brand-logo { width: 34px; height: 34px; border-radius: 9px; object-fit: cover; }
 .topbar-avatar {
-  width: 58px; height: 100%; flex: 0 0 58px; padding: 0; border: none;
+  width: 52px; height: 100%; flex: 0 0 52px; padding: 0; border: none;
   background: transparent; border-radius: 0; cursor: pointer;
   -webkit-app-region: no-drag;
   display: flex; align-items: center; justify-content: center;
 }
 .topbar-avatar img {
-  width: 42px; height: 42px; border-radius: 50%; object-fit: cover;
+  width: 36px; height: 36px; border-radius: 50%; object-fit: cover;
   border: 1px solid var(--line); background: #fff;
 }
 .topbar-avatar:hover img { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
