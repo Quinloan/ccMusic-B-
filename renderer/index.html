@@ -128,10 +128,16 @@
             <a id="relLink" class="plink">GitHub Releases</a>
           </div>
 
-          <div class="sec">
+          <div class="sec" id="playSettings">
             <div class="sec-title">播放控制</div>
             <div class="sec-desc">窗口不在前台时也能控制播放，关闭窗口后继续在托盘后台播放</div>
             <div class="card">
+              <div class="row-line">
+                <div class="rl-main"><b>开机自启动</b><div class="muted">登录系统后自动运行 ccMusic（缩到托盘）</div></div>
+                <div class="rl-actions">
+                  <label class="switch"><input type="checkbox" id="autoLaunch" /><span class="slider"></span></label>
+                </div>
+              </div>
               <div class="row-line">
                 <div class="rl-main"><b>全局媒体键</b><div class="muted">键盘上的播放/暂停、上一首、下一首全局生效</div></div>
                 <div class="rl-actions">
@@ -139,7 +145,7 @@
                 </div>
               </div>
               <div class="row-line">
-                <div class="rl-main"><b>关闭到托盘</b><div class="muted">点关闭按钮时缩到系统托盘，音乐继续播放</div></div>
+                <div class="rl-main"><b>关闭按钮行为</b><div class="muted">开：点右上角 × 缩到托盘继续播放；关：点 × 直接退出程序</div></div>
                 <div class="rl-actions">
                   <label class="switch"><input type="checkbox" id="closeToTray" /><span class="slider"></span></label>
                 </div>

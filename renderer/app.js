@@ -119,6 +119,8 @@ async function checkLogin() {
 
 // ---------------------------------------------------------------- 账号菜单
 const AM_ICONS = {
+  setting:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>',
   update:
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"></path><path d="M21 3v6h-6"></path></svg>',
   diag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>',
@@ -149,6 +151,7 @@ function openAccountMenu() {
       <div><div class="h-name">未登录</div><div class="h-sub">登录后可解锁更高音质</div></div>`;
   }
   const rows = [
+    amItem(AM_ICONS.setting, '设置', 'settings'),
     amItem(AM_ICONS.update, '检查更新', 'update'),
     amItem(AM_ICONS.diag, '诊断', 'diag'),
     amItem(AM_ICONS.about, '关于', 'about'),
@@ -165,7 +168,13 @@ function openAccountMenu() {
         m.hidden = true;
         const act = el.dataset.act;
         if (act === 'diag' || act === 'about') showView(act);
-        else if (act === 'login') openLogin();
+        else if (act === 'settings') {
+          showView('about'); // 设置集中在「关于」页的播放控制 / 更新设置区
+          setTimeout(() => {
+            const el = $('#playSettings');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 40);
+        } else if (act === 'login') openLogin();
         else if (act === 'logout') {
           await B.logout();
           toast('已退出登录');
@@ -420,7 +429,8 @@ async function playTrack(it, idx) {
     $('#bCover').src = it.cover || '';
     $('#bTitle').textContent = it.title;
     $('#bUp').textContent = it.up || it.author || '';
-    $('#quality').textContent = track.kbps ? `${track.kbps}kbps` : '音轨';
+    const isFlac = !!(p.flac && track === p.flac);
+    $('#quality').textContent = isFlac ? 'FLAC' : track.kbps ? `${track.kbps}kbps` : '音轨';
     $('#play').textContent = '⏸';
     B.setTrayTip(it.title); // 托盘悬停时显示当前曲目
     renderList();
@@ -562,6 +572,11 @@ async function initAbout() {
   $('#autoCheck').checked = localStorage.autoCheck !== '0';
   $('#mediaKeys').checked = localStorage.mediaKeys !== '0';
   $('#closeToTray').checked = localStorage.closeToTray !== '0';
+  try {
+    $('#autoLaunch').checked = !!(await B.getAutoLaunch());
+  } catch (e) {
+    $('#autoLaunch').checked = false;
+  }
 }
 
 // ---------------------------------------------------------------- 事件
@@ -623,9 +638,21 @@ $('#closeToTray').onchange = () => {
   B.setCloseToTray(on);
   toast(on ? '关闭窗口后将缩到托盘' : '关闭窗口即退出程序');
 };
+$('#autoLaunch').onchange = async () => {
+  const on = $('#autoLaunch').checked;
+  const ok = await B.setAutoLaunch(on);
+  $('#autoLaunch').checked = !!ok;
+  toast(ok ? '已设置开机自启动' : '已取消开机自启动');
+};
 $('#quitBtn').onclick = () => {
   if (confirm('确定退出 ccMusic 吗？')) B.appQuit();
 };
+
+// 无损优先激活时，音质按钮保持高亮
+function syncQualityBtn() {
+  $('#quality').classList.toggle('on', localStorage.prefFlac === '1');
+}
+syncQualityBtn();
 
 $('#go').onclick = handleSearch;
 $('#kw').onkeydown = (e) => { if (e.key === 'Enter') handleSearch(); };
@@ -681,6 +708,7 @@ $('#loginClose').onclick = () => {
 };
 $('#quality').onclick = () => {
   localStorage.prefFlac = localStorage.prefFlac === '1' ? '0' : '1';
+  syncQualityBtn();
   toast(localStorage.prefFlac === '1' ? '已开启无损优先（下一首生效）' : '已关闭无损优先');
 };
 

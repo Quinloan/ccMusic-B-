@@ -6,6 +6,7 @@ const { app, BrowserWindow } = require('electron');
 
 const out = process.argv[2] || 'shot.png';
 const openMenu = process.argv.includes('--menu');
+const openAbout = process.argv.includes('--about');
 
 app.whenReady().then(async () => {
   const win = new BrowserWindow({
@@ -21,6 +22,16 @@ app.whenReady().then(async () => {
   });
   await win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
   await new Promise((r) => setTimeout(r, 2000));
+  if (openAbout) {
+    await win.webContents.executeJavaScript(
+      "typeof showView === 'function' ? (showView('about'), 'ok') : 'no-fn'"
+    );
+    await new Promise((r) => setTimeout(r, 400));
+    await win.webContents.executeJavaScript(
+      "document.querySelector('#playSettings')?.scrollIntoView({ block: 'start' }); 'ok'"
+    );
+    await new Promise((r) => setTimeout(r, 300));
+  }
   if (openMenu) {
     await win.webContents.executeJavaScript(
       "typeof openAccountMenu === 'function' ? (openAccountMenu(), 'ok') : 'no-fn'"

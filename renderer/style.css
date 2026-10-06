@@ -287,6 +287,12 @@ button.primary:hover { opacity: .9; color: #fff; }
 .quality { font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; cursor: pointer; }
 .volico { font-size: 13px; }
 .bar button.on-mode { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+/* 无损优先激活时音质按钮高亮 */
+.quality.on {
+  background: var(--accent-soft); border-color: var(--accent);
+  color: var(--accent); font-weight: 600;
+}
+.quality:hover { border-color: var(--accent); }
 
 /* 登录弹窗 */
 .modal {

@@ -336,6 +336,11 @@ ipcMain.handle('settings:mediaKeys', (_e, on) => {
 ipcMain.handle('settings:closeToTray', (_e, on) => {
   closeToTray = !!on;
 });
+ipcMain.handle('settings:autoLaunch', (_e, on) => {
+  app.setLoginItemSettings({ openAtLogin: !!on });
+  return app.getLoginItemSettings().openAtLogin;
+});
+ipcMain.handle('settings:autoLaunchState', () => app.getLoginItemSettings().openAtLogin);
 
 // ---------------------------------------------------------------- 诊断
 ipcMain.handle('diag:env', () => ({

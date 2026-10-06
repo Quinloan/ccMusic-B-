@@ -26,6 +26,8 @@ contextBridge.exposeInMainWorld('api', {
   appQuit: () => ipcRenderer.invoke('app:quit'),
   setMediaKeys: (on) => ipcRenderer.invoke('settings:mediaKeys', !!on),
   setCloseToTray: (on) => ipcRenderer.invoke('settings:closeToTray', !!on),
+  setAutoLaunch: (on) => ipcRenderer.invoke('settings:autoLaunch', !!on),
+  getAutoLaunch: () => ipcRenderer.invoke('settings:autoLaunchState'),
 
   // 诊断 / 关于 / 更新
   diagEnv: () => ipcRenderer.invoke('diag:env'),
