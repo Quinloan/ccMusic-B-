@@ -148,9 +148,10 @@ ipcMain.handle('store:set', (_e, library) => {
 });
 
 ipcMain.handle('login:state', async () => {
+  await ensureSession();
   if (!cookies.SESSDATA) return { logged: false };
   const nav = await apiGet(API, '/x/web-interface/nav');
-  if (nav && nav.data && nav.data.isLogin) {
+  if (nav && nav.code === 0 && nav.data && nav.data.isLogin) {
     return {
       logged: true,
       name: nav.data.uname,
@@ -158,12 +159,18 @@ ipcMain.handle('login:state', async () => {
       level: nav.data.level_info ? nav.data.level_info.current_level : null,
     };
   }
-  delete cookies.SESSDATA;
-  persistCookies();
-  return { logged: false };
+  if (nav && nav.code === 0) {
+    // B 站明确告知未登录，凭据确实失效了才清除
+    delete cookies.SESSDATA;
+    persistCookies();
+    return { logged: false };
+  }
+  // 接口失败（网络/风控）：保留凭据，只是暂时查不到状态
+  return { logged: false, stale: true };
 });
 
-ipcMain.handle('login:logout', () => {
+ipcMain.handle('login:logout', async () => {
+  await ensureSession();
   for (const k of Object.keys(cookies)) {
     if (k !== 'buvid3' && k !== 'buvid4') delete cookies[k];
   }
@@ -262,6 +269,7 @@ ipcMain.handle('bili:playurl', async (_e, bvid, cid) => {
 });
 
 ipcMain.handle('login:qrcode', async () => {
+  await ensureSession();
   const j = await apiGet(PASSPORT, '/x/passport-login/web/qrcode/generate');
   if (!j || j.code !== 0) throw new Error('二维码生成失败');
   const QRCode = (await import('qrcode')).default;

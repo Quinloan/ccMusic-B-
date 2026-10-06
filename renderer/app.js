@@ -91,18 +91,40 @@ async function init() {
 }
 
 async function checkLogin() {
-  const st = await B.loginState();
   const box = $('#account');
+  let st;
+  try {
+    st = await B.loginState();
+  } catch (e) {
+    st = { logged: false, stale: true };
+  }
   if (st.logged) {
-    box.innerHTML = `<img src="${st.face}" /><span>${esc(st.name)} · Lv${st.level ?? '-'}</span>`;
+    box.innerHTML = `<img src="${esc(st.face || '')}" />
+      <div class="a-main">
+        <div class="a-name">${esc(st.name || '已登录')}</div>
+        <div class="a-sub">Lv${st.level ?? '-'} · 点击退出登录</div>
+      </div>`;
     box.title = '点击退出登录';
     box.onclick = async () => {
       await B.logout();
       toast('已退出登录');
       checkLogin();
     };
+  } else if (st.stale) {
+    box.innerHTML = `<div class="avatar-ph">♪</div>
+      <div class="a-main">
+        <div class="a-name">登录状态检查失败</div>
+        <div class="a-sub">点击重试</div>
+      </div>`;
+    box.title = '点击重试';
+    box.onclick = () => { checkLogin(); };
   } else {
-    box.innerHTML = '<span>未登录 · 点击扫码登录</span>';
+    box.innerHTML = `<div class="avatar-ph">♪</div>
+      <div class="a-main">
+        <div class="a-name">未登录</div>
+        <div class="a-sub">点击扫码登录，解锁高音质</div>
+      </div>`;
+    box.title = '点击扫码登录';
     box.onclick = openLogin;
   }
 }
@@ -130,6 +152,19 @@ function renderFolders() {
       save(); renderFolders(); renderList(); showView('library');
     };
   });
+}
+
+function rowHtml(it, i) {
+  return `<div class="row ${i === S.cur ? 'on' : ''}" data-i="${i}">
+    <img src="${esc(it.cover || '')}" loading="lazy" />
+    <div class="meta">
+      <div class="t">${esc(it.title)}</div>
+      <div class="u">${esc(it.up || it.author || '')} · ${fmtDur(it.duration)}</div>
+    </div>
+    <div class="acts">
+      <button data-play="${i}">播放</button>
+      <button data-rm="${i}">移除</button>
+    </div></div>`;
 }
 
 function renderList() {
@@ -363,22 +398,32 @@ async function openLogin() {
   $('#loginModal').hidden = false;
   $('#qrTip').textContent = '正在生成二维码…';
   $('#qr').removeAttribute('src');
-  const { key, dataUrl } = await B.loginQrcode();
-  $('#qr').src = dataUrl;
-  $('#qrTip').textContent = '请使用 B 站 App 扫码';
+  try {
+    const { key, dataUrl } = await B.loginQrcode();
+    $('#qr').src = dataUrl;
+    $('#qrTip').textContent = '请使用 B 站 App 扫码';
+  } catch (e) {
+    $('#qrTip').textContent = '二维码生成失败：' + e.message;
+    return;
+  }
   clearInterval(pollTimer);
   pollTimer = setInterval(async () => {
-    const r = await B.loginPoll(key);
-    if (r.status === 'scanned') $('#qrTip').textContent = '已扫描，请在手机上确认';
-    if (r.status === 'expired') {
+    try {
+      const r = await B.loginPoll(key);
+      if (r.status === 'scanned') $('#qrTip').textContent = '已扫描，请在手机上确认';
+      if (r.status === 'expired') {
+        clearInterval(pollTimer);
+        $('#qrTip').textContent = '二维码已过期，请关闭后重新打开';
+      }
+      if (r.status === 'done') {
+        clearInterval(pollTimer);
+        $('#loginModal').hidden = true;
+        toast('登录成功，音质已解锁');
+        checkLogin();
+      }
+    } catch (e) {
       clearInterval(pollTimer);
-      $('#qrTip').textContent = '二维码已过期，请重新打开';
-    }
-    if (r.status === 'done') {
-      clearInterval(pollTimer);
-      $('#loginModal').hidden = true;
-      toast('登录成功，音质已解锁');
-      checkLogin();
+      $('#qrTip').textContent = '登录检查失败：' + e.message;
     }
   }, 1500);
 }
