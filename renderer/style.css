@@ -189,6 +189,18 @@ body {
 }
 .topbar-avatar:hover img { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
 .searchbox { -webkit-app-region: no-drag; }
+/* 搜索框左侧返回按钮（自绘标题栏内，必须 no-drag） */
+.back-btn {
+  -webkit-app-region: no-drag;
+  flex: 0 0 34px; width: 34px; height: 34px; padding: 0; margin-right: 10px;
+  border: 1px solid var(--line); background: var(--bg); border-radius: 50%;
+  color: var(--text); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color .15s, color .15s, opacity .15s;
+}
+.back-btn:hover { border-color: var(--accent); color: var(--accent); }
+.back-btn.dim { opacity: .38; }
+.back-btn svg { width: 16px; height: 16px; }
 .win-btns {
   -webkit-app-region: no-drag; display: flex; height: 100%;
   flex: 0 0 auto; border-left: 1px solid var(--line);

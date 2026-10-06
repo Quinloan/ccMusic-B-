@@ -42,11 +42,24 @@ function toast(msg) {
 }
 
 const VIEWS = ['library', 'search', 'diag', 'about'];
-function showView(v) {
+const viewStack = []; // 视图历史，返回按钮用
+function showView(v, opts) {
   if (!VIEWS.includes(v)) v = 'library';
+  if (S.view && S.view !== v && !(opts && opts.noHistory)) {
+    viewStack.push(S.view);
+    if (viewStack.length > 30) viewStack.shift();
+  }
   S.view = v;
   VIEWS.forEach((id) => { const el = $('#view-' + id); if (el) el.hidden = id !== v; });
   $$('.nav-item').forEach((n) => n.classList.toggle('on', n.dataset.view === v));
+  const back = $('#backBtn');
+  if (back) back.classList.toggle('dim', viewStack.length === 0);
+}
+// 返回上一视图；没有历史时提示
+function goBack() {
+  const prev = viewStack.pop();
+  if (!prev) { toast('已经在最上层了'); return; }
+  showView(prev, { noHistory: true });
 }
 
 // ---------------------------------------------------------------- 输入识别
@@ -602,6 +615,9 @@ document.addEventListener('click', (e) => {
 $('#wMin').onclick = () => B.winMin();
 $('#wMax').onclick = () => B.winMaxToggle();
 $('#wClose').onclick = () => B.winClose();
+
+// 顶栏返回按钮：回上一视图
+$('#backBtn').onclick = goBack;
 
 // 全局媒体键 / 系统托盘菜单发来的播放指令
 B.onMediaCmd((cmd) => {

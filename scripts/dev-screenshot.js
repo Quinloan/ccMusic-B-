@@ -7,6 +7,7 @@ const { app, BrowserWindow } = require('electron');
 const out = process.argv[2] || 'shot.png';
 const openMenu = process.argv.includes('--menu');
 const openAbout = process.argv.includes('--about');
+const testBack = process.argv.includes('--back');
 
 app.whenReady().then(async () => {
   const win = new BrowserWindow({
@@ -22,6 +23,12 @@ app.whenReady().then(async () => {
   });
   await win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
   await new Promise((r) => setTimeout(r, 2000));
+  if (testBack) {
+    const r = await win.webContents.executeJavaScript(
+      "(function(){ showView('diag'); showView('about'); goBack(); return S.view; })()"
+    );
+    console.log('back-result:', r, '(期望 diag)');
+  }
   if (openAbout) {
     await win.webContents.executeJavaScript(
       "typeof showView === 'function' ? (showView('about'), 'ok') : 'no-fn'"
