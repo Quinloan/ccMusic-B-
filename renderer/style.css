@@ -171,11 +171,12 @@ body {
   display: flex; align-items: center; gap: 0; padding: 0 0 0 20px;
   -webkit-app-region: drag;
 }
-.brand {
-  font-size: 14px; font-weight: 500; flex: 0 0 auto; margin-right: 16px;
-  display: flex; align-items: center; gap: 8px;
+/* 侧栏顶部品牌区（收藏夹板块之上，留足间距把下方板块推下去） */
+.side-brand {
+  display: flex; align-items: center; gap: 10px;
+  padding: 2px 16px 22px; font-size: 15px; font-weight: 600;
 }
-.brand-logo { width: 22px; height: 22px; border-radius: 6px; object-fit: cover; }
+.side-brand-logo { width: 28px; height: 28px; border-radius: 8px; object-fit: cover; }
 .topbar-avatar {
   width: 58px; height: 100%; flex: 0 0 58px; padding: 0; border: none;
   background: transparent; border-radius: 0; cursor: pointer;
