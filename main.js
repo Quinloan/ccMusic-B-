@@ -1,7 +1,7 @@
 // B 站纯音频连播 · Electron 主进程（CommonJS）
 // 关键点：用 session.webRequest 给渲染进程发出的音频/图片请求注入 Referer，
 // 因此不需要任何本地代理中转，音频流由 Chromium 直连 B 站 CDN。
-const { app, BrowserWindow, ipcMain, session, shell, Menu, clipboard } = require('electron');
+const { app, BrowserWindow, ipcMain, session, shell, Menu, clipboard, dialog } = require('electron');
 const { createHash } = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -445,6 +445,48 @@ ipcMain.handle('update:check', async () => {
   }
 });
 
+// ---------------------------------------------------------------- 自动更新
+// 打包环境下通过 electron-updater 检查 GitHub Releases，后台静默下载，
+// 下载完成后弹窗询问是否立即重启；即使不点，退出时也会自动装好新版。
+function setupAutoUpdater() {
+  if (!app.isPackaged) return;
+  let autoUpdater;
+  try {
+    ({ autoUpdater } = require('electron-updater'));
+  } catch (e) {
+    console.error('[updater] 模块缺失:', e.message);
+    return;
+  }
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+  let asking = false;
+  autoUpdater.on('update-downloaded', (info) => {
+    if (asking) return;
+    asking = true;
+    dialog
+      .showMessageBox({
+        type: 'info',
+        title: 'ccMusic 更新',
+        message: '新版本 v' + info.version + ' 已下载完成',
+        detail: '重启应用即可完成更新，歌单与登录不受影响。',
+        buttons: ['立即重启更新', '下次启动再说'],
+        defaultId: 0,
+        cancelId: 1,
+        noLink: true,
+      })
+      .then(({ response }) => {
+        asking = false;
+        if (response === 0) autoUpdater.quitAndInstall(true, true);
+      })
+      .catch(() => (asking = false));
+  });
+  autoUpdater.on('error', (e) => console.error('[updater]', e.message));
+  const check = () =>
+    autoUpdater.checkForUpdates().catch((e) => console.error('[updater]', e.message));
+  setTimeout(check, 15000); // 启动 15 秒后首次检查，避开启动高峰
+  setInterval(check, 4 * 60 * 60 * 1000); // 之后每 4 小时
+}
+
 // ---------------------------------------------------------------- 窗口
 function createWindow() {
   console.log('[boot] 窗口创建于 ' + Math.round(process.uptime() * 1000) + 'ms');
@@ -498,6 +540,7 @@ app.whenReady().then(async () => {
   // 关键：窗口先开，网络会话后台预热，启动不再被接口请求阻塞
   createWindow();
   ensureSession().catch((e) => console.error('[session]', e.message));
+  setupAutoUpdater();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
