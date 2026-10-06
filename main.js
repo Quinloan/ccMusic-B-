@@ -121,7 +121,22 @@ async function initSession() {
 
 // 单例：启动时后台预热，任何 B 站 IPC 调用前确保会话就绪
 let sessionReady = null;
-function ensureSession() {
+// 网络模块（undici）懒加载：不再拖慢窗口出现与首屏渲染
+let ufetchReady = null;
+function netInit() {
+  if (!ufetchReady) {
+    ufetchReady = (async () => {
+      const undici = await import('undici');
+      ufetch = undici.fetch;
+      agent = new undici.Agent({ allowH2: true });
+      console.log('[boot] 网络模块就绪于 ' + Math.round(process.uptime() * 1000) + 'ms');
+    })();
+  }
+  return ufetchReady;
+}
+
+async function ensureSession() {
+  await netInit();
   if (!sessionReady) {
     sessionReady = initSession().catch((e) => {
       sessionReady = null;
@@ -616,6 +631,7 @@ function createWindow() {
     minHeight: 600,
     title: 'ccMusic',
     frame: false, // 自绘标题栏
+    show: false, // 内容就绪后再显示，避免“先弹白窗再干等”
     backgroundColor: '#f7f7f9',
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
@@ -626,6 +642,14 @@ function createWindow() {
   });
 
   mainWin = win;
+  // 首帧就绪即显示；兜底 2.5s 强制显示，防止极少数情况下 ready-to-show 不触发
+  win.once('ready-to-show', () => {
+    if (!win.isVisible()) win.show();
+  });
+  setTimeout(() => {
+    if (!win.isDestroyed() && !win.isVisible()) win.show();
+  }, 2500);
+
   // 关窗口默认进托盘后台续播；只有 tray 菜单「退出」或开关关闭时才真正退出
   win.on('close', (e) => {
     if (!quitting && closeToTray && tray) {
@@ -659,20 +683,38 @@ function createWindow() {
   return win;
 }
 
+// 规避异常退出留下的 GPU 缓存锁导致的启动卡顿（不影响图片 HTTP 缓存）
+app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
+
+// 单实例：再点一次直接聚焦已开窗口，避免多开抢媒体键、抢缓存目录
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (mainWin) {
+      if (mainWin.isMinimized()) mainWin.restore();
+      if (!mainWin.isVisible()) mainWin.show();
+      mainWin.focus();
+    }
+  });
+}
+
 app.whenReady().then(async () => {
   try {
     Menu.setApplicationMenu(null);
   } catch (e) {}
-  const undici = await import('undici');
-  ufetch = undici.fetch;
-  agent = new undici.Agent({ allowH2: true });
-  // 关键：窗口先开，网络会话后台预热，启动不再被接口请求阻塞
+  // 关键：先出界面，网络库与会话预热放到首屏之后，避免阻塞启动
   createWindow();
-  ensureSession().catch((e) => console.error('[session]', e.message));
   setupAutoUpdater();
   setupTray();
   applyMediaKeys(); // 默认开启，渲染端读完设置后会再同步一次
   app.on('before-quit', () => globalShortcut.unregisterAll());
+  setTimeout(() => {
+    netInit()
+      .then(() => ensureSession())
+      .catch((e) => console.error('[session]', e.message));
+  }, 600); // 错开首屏渲染高峰
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });

@@ -1,5 +1,9 @@
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => Array.from(document.querySelectorAll(s));
+// 启动耗时埋点：定位“窗口出来了但内容迟迟不出现”的问题
+const T0 = performance.now();
+const mark = (s) => console.log('[perf] ' + s + ' @' + Math.round(performance.now() - T0) + 'ms');
+mark('脚本开始执行');
 const B = window.api; // 注意：不能用 const api，会与 contextBridge 暴露的 window.api 冲突
 const audio = $('#audio');
 
@@ -88,7 +92,9 @@ function idFromUrl(u) {
 
 // ---------------------------------------------------------------- 初始化
 async function init() {
+  mark('init 开始');
   const lib = await B.getLibrary();
+  mark('收藏数据已返回');
   if (lib?.folders?.length) {
     S.folders = lib.folders;
     S.active = lib.active && S.folders.some((f) => f.id === lib.active) ? lib.active : S.folders[0].id;
@@ -100,7 +106,8 @@ async function init() {
   audio.volume = 0.8;
   renderFolders();
   renderList();
-  checkLogin();
+  mark('首屏渲染完成');
+  setTimeout(checkLogin, 350); // 登录状态走网络，错开首屏渲染
 }
 
 const LOGO_SRC = '../assets/icon.png';
@@ -771,13 +778,15 @@ async function selfTest() {
   }
 }
 
+mark('init 调用前');
 init();
 async function afterInit() {
   await initDiag();
   await initAbout();
   const lc = localStorage.lastCheckAt;
   if (lc) $('#lastCheck').textContent = lc;
-  if (localStorage.autoCheck !== '0') doCheck(true);
+  mark('后台初始化完成');
+  if (localStorage.autoCheck !== '0') doCheck(true); // 更新检查最后再做，不抢首屏
 }
-afterInit();
+setTimeout(afterInit, 500); // 诊断/关于/更新检查都不影响首屏，延后执行
 if (location.search.indexOf('selftest=1') >= 0) setTimeout(selfTest, 1200);
