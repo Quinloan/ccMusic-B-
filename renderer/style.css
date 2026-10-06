@@ -139,7 +139,7 @@ body {
 
 /* 账号二级菜单 */
 .acct-menu {
-  position: fixed; top: 64px; right: 158px; width: 220px; z-index: 70;
+  position: fixed; top: 64px; right: 170px; width: 220px; z-index: 70;
   background: #fff; border: 1px solid var(--line); border-radius: 12px;
   box-shadow: 0 12px 32px rgba(30, 35, 45, .14); padding: 6px;
 }
@@ -177,12 +177,13 @@ body {
 }
 .brand-logo { width: 22px; height: 22px; border-radius: 6px; object-fit: cover; }
 .topbar-avatar {
-  width: 34px; height: 34px; flex: 0 0 34px; padding: 0; border: none;
+  width: 50px; height: 40px; flex: 0 0 50px; padding: 0; border: none;
   background: transparent; border-radius: 50%; cursor: pointer;
-  margin-right: 6px; display: flex; align-items: center; justify-content: center;
+  -webkit-app-region: no-drag;
+  margin-right: 2px; display: flex; align-items: center; justify-content: center;
 }
 .topbar-avatar img {
-  width: 28px; height: 28px; border-radius: 50%; object-fit: cover;
+  width: 32px; height: 32px; border-radius: 50%; object-fit: cover;
   border: 1px solid var(--line); background: #fff;
 }
 .topbar-avatar:hover img { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
@@ -192,13 +193,13 @@ body {
   margin-left: auto; flex: 0 0 auto;
 }
 .win-btns button {
-  width: 46px; height: 100%; min-width: 0; padding: 0; border: none;
-  background: transparent; color: var(--muted); border-radius: 0;
+  width: 50px; height: 100%; min-width: 0; padding: 0; border: none;
+  background: transparent; color: var(--text); border-radius: 0;
   display: flex; align-items: center; justify-content: center; cursor: pointer;
 }
 .win-btns button:hover { background: rgba(0, 0, 0, .07); color: var(--text); }
 .win-btns button.close:hover { background: #e81123; color: #fff; }
-.win-btns svg { width: 10px; height: 10px; }
+.win-btns svg { width: 13px; height: 13px; }
 .searchbox {
   flex: 0 1 380px; min-width: 220px; margin: 0 auto; display: flex; align-items: center;
   background: var(--bg); border: 1px solid var(--line); border-radius: 20px;
