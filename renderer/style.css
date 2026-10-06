@@ -150,6 +150,36 @@ body {
 .newfolder input:focus { border-color: var(--accent); }
 .newfolder button { padding: 6px 9px; }
 .spacer { flex: 1; }
+.side-foot {
+  padding: 10px 16px; border-top: 1px solid var(--line);
+  font-size: 11px; color: var(--muted);
+}
+
+/* 账号二级菜单 */
+.acct-menu {
+  position: fixed; top: 96px; left: 12px; width: 220px; z-index: 70;
+  background: #fff; border: 1px solid var(--line); border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(30, 35, 45, .14); padding: 6px;
+}
+.am-head {
+  display: flex; align-items: center; gap: 10px; padding: 9px 10px 8px;
+  border-bottom: 1px solid var(--line); margin-bottom: 5px;
+}
+.am-head img, .am-head .avatar-ph {
+  width: 36px; height: 36px; border-radius: 50%; object-fit: cover; flex: 0 0 36px;
+}
+.am-head .h-name { font-size: 13px; font-weight: 500; }
+.am-head .h-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.am-item {
+  display: flex; align-items: center; gap: 9px; padding: 8px 10px;
+  border-radius: 8px; font-size: 13px; cursor: pointer; color: var(--text);
+}
+.am-item:hover { background: var(--accent-soft); color: var(--accent); }
+.am-item svg { width: 15px; height: 15px; color: var(--muted); flex: 0 0 15px; }
+.am-item:hover svg { color: var(--accent); }
+.am-item.danger:hover { background: #fdeeee; color: #c0392b; }
+.am-item.danger:hover svg { color: #c0392b; }
+.am-sep { height: 1px; background: var(--line); margin: 5px 8px; }
 .account {
   padding: 12px 16px; border-top: 1px solid var(--line); font-size: 12px;
   color: var(--muted); cursor: pointer; display: flex; align-items: center; gap: 8px;
@@ -157,15 +187,28 @@ body {
 .account:hover { color: var(--accent); }
 .account img { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; }
 
-/* 右列：顶栏 + 主区 */
+/* 右列：顶栏（自绘标题栏）+ 主区 */
 .right-col { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 .topbar {
   height: 58px; flex: 0 0 58px; background: var(--panel);
   border-bottom: 1px solid var(--line);
-  display: flex; align-items: center; gap: 16px; padding: 0 20px;
+  display: flex; align-items: center; gap: 16px; padding: 0 0 0 20px;
+  -webkit-app-region: drag;
 }
 .brand { font-size: 14px; font-weight: 500; flex: 0 0 auto; }
-.top-right { flex: 0 0 110px; }
+.searchbox { -webkit-app-region: no-drag; }
+.win-btns {
+  -webkit-app-region: no-drag; display: flex; height: 100%;
+  margin-left: auto; flex: 0 0 auto;
+}
+.win-btns button {
+  width: 46px; height: 100%; min-width: 0; padding: 0; border: none;
+  background: transparent; color: var(--muted); border-radius: 0;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.win-btns button:hover { background: rgba(0, 0, 0, .07); color: var(--text); }
+.win-btns button.close:hover { background: #e81123; color: #fff; }
+.win-btns svg { width: 10px; height: 10px; }
 .searchbox {
   flex: 1; max-width: 640px; margin: 0 auto; display: flex; align-items: center;
   background: var(--bg); border: 1px solid var(--line); border-radius: 20px;

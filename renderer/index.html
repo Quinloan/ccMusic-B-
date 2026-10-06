@@ -11,10 +11,10 @@
 <div class="app">
   <aside class="side">
     <div id="account" class="account-card">
-      <div class="avatar-ph">♪</div>
+      <img class="logo-avatar" src="../assets/icon.png" alt="" />
       <div class="a-main">
         <div class="a-name">未登录</div>
-        <div class="a-sub">点击扫码登录，解锁高音质</div>
+        <div class="a-sub">点击登录，解锁高音质</div>
       </div>
     </div>
     <div class="side-label">我的收藏夹</div>
@@ -24,17 +24,7 @@
       <button id="nfBtn" title="新建">＋</button>
     </div>
     <div class="spacer"></div>
-    <div class="side-label">系统</div>
-    <nav class="sysnav">
-      <div class="nav-item" data-view="diag">
-        <svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
-        诊断
-      </div>
-      <div class="nav-item" data-view="about">
-        <svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
-        关于
-      </div>
-    </nav>
+    <div class="side-foot">ccMusic <span id="sideVer"></span></div>
   </aside>
 
   <div class="right-col">
@@ -48,7 +38,11 @@
         <input id="kw" type="text" placeholder="搜索关键词，或直接粘贴 BV 号 / av 号 / B 站链接，回车查找" />
         <button id="go" class="primary">搜索</button>
       </div>
-      <div class="top-right"></div>
+      <div class="win-btns">
+        <button id="wMin" title="最小化"><svg viewBox="0 0 10 10"><path d="M1 5h8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></button>
+        <button id="wMax" title="最大化 / 还原"><svg viewBox="0 0 10 10"><rect x="1.5" y="1.5" width="7" height="7" rx="1" stroke="currentColor" fill="none" stroke-width="1.2"/></svg></button>
+        <button id="wClose" class="close" title="关闭"><svg viewBox="0 0 10 10"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></button>
+      </div>
     </header>
 
     <main class="main">
@@ -136,14 +130,14 @@
 
           <div class="sec">
             <div class="sec-title">更新设置</div>
-            <div class="sec-desc">更新只在 GitHub 下载后手动安装</div>
+            <div class="sec-desc">新版本自动检查下载，完成后提示重启更新</div>
             <div class="card">
               <div class="row-line">
                 <div class="rl-main"><b>检查更新</b><div class="muted">从 GitHub Releases 检查新版本</div></div>
                 <div class="rl-actions"><button id="checkBtn">检查更新</button></div>
               </div>
               <div class="row-line">
-                <div class="rl-main"><b>自动检查</b><div class="muted">启动时后台检查，不会自动安装</div></div>
+                <div class="rl-main"><b>自动检查</b><div class="muted">启动后自动检查并后台下载新版本</div></div>
                 <div class="rl-actions">
                   <label class="switch"><input type="checkbox" id="autoCheck" /><span class="slider"></span></label>
                 </div>
@@ -184,6 +178,11 @@
     <input id="vol" type="range" min="0" max="100" value="80" />
   </div>
 </footer>
+
+<div id="accountMenu" class="acct-menu" hidden>
+  <div id="amHead" class="am-head"></div>
+  <div id="amItems"></div>
+</div>
 
 <div id="loginModal" class="modal" hidden>
   <div class="modal-box">

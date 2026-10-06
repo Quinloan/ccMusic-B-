@@ -15,6 +15,11 @@ contextBridge.exposeInMainWorld('api', {
   openExternal: (url) => ipcRenderer.invoke('app:openExternal', url),
   copyText: (text) => ipcRenderer.invoke('app:copyText', text),
 
+  // 窗口控制（自绘标题栏）
+  winMin: () => ipcRenderer.invoke('win:minimize'),
+  winMaxToggle: () => ipcRenderer.invoke('win:maxToggle'),
+  winClose: () => ipcRenderer.invoke('win:close'),
+
   // 诊断 / 关于 / 更新
   diagEnv: () => ipcRenderer.invoke('diag:env'),
   diagApi: (bv) => ipcRenderer.invoke('diag:api', bv),

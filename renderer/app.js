@@ -90,6 +90,9 @@ async function init() {
   checkLogin();
 }
 
+const LOGO_SRC = '../assets/icon.png';
+let accountState = { logged: false };
+
 async function checkLogin() {
   const box = $('#account');
   let st;
@@ -102,31 +105,89 @@ async function checkLogin() {
     box.innerHTML = `<img src="${esc(st.face || '')}" />
       <div class="a-main">
         <div class="a-name">${esc(st.name || '已登录')}</div>
-        <div class="a-sub">Lv${st.level ?? '-'} · 点击退出登录</div>
+        <div class="a-sub">Lv${st.level ?? '-'} · 点按打开账号菜单</div>
       </div>`;
-    box.title = '点击退出登录';
-    box.onclick = async () => {
-      await B.logout();
-      toast('已退出登录');
-      checkLogin();
-    };
+    box.title = '账号';
+    accountState = { logged: true, st };
   } else if (st.stale) {
-    box.innerHTML = `<div class="avatar-ph">♪</div>
+    box.innerHTML = `<img class="logo-avatar" src="${LOGO_SRC}" alt="" />
       <div class="a-main">
         <div class="a-name">登录状态检查失败</div>
         <div class="a-sub">点击重试</div>
       </div>`;
     box.title = '点击重试';
-    box.onclick = () => { checkLogin(); };
+    accountState = { logged: false, stale: true };
   } else {
-    box.innerHTML = `<div class="avatar-ph">♪</div>
+    box.innerHTML = `<img class="logo-avatar" src="${LOGO_SRC}" alt="" />
       <div class="a-main">
         <div class="a-name">未登录</div>
-        <div class="a-sub">点击扫码登录，解锁高音质</div>
+        <div class="a-sub">点击登录，解锁高音质</div>
       </div>`;
-    box.title = '点击扫码登录';
-    box.onclick = openLogin;
+    box.title = '点击登录';
+    accountState = { logged: false };
   }
+}
+
+// ---------------------------------------------------------------- 账号菜单
+const AM_ICONS = {
+  update:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"></path><path d="M21 3v6h-6"></path></svg>',
+  diag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>',
+  about:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>',
+  logout:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="M16 17l5-5-5-5"></path><path d="M21 12H9"></path></svg>',
+  login:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect><path d="M3 14h4v4"></path><path d="M10 21h4"></path></svg>',
+};
+
+function amItem(icon, label, act, danger) {
+  return `<div class="am-item ${danger ? 'danger' : ''}" data-act="${act}">${icon}<span>${label}</span></div>`;
+}
+
+function openAccountMenu() {
+  const m = $('#accountMenu');
+  const head = $('#amHead');
+  if (accountState.logged) {
+    const st = accountState.st;
+    head.innerHTML = `<img src="${esc(st.face || '')}" />
+      <div><div class="h-name">${esc(st.name || '已登录')}</div><div class="h-sub">B 站等级 Lv${st.level ?? '-'}</div></div>`;
+  } else if (accountState.stale) {
+    head.innerHTML = `<img class="logo-avatar" src="${LOGO_SRC}" alt="" />
+      <div><div class="h-name">登录状态检查失败</div><div class="h-sub">网络或接口暂时不可用</div></div>`;
+  } else {
+    head.innerHTML = `<img class="logo-avatar" src="${LOGO_SRC}" alt="" />
+      <div><div class="h-name">未登录</div><div class="h-sub">登录后可解锁更高音质</div></div>`;
+  }
+  const rows = [
+    amItem(AM_ICONS.update, '检查更新', 'update'),
+    amItem(AM_ICONS.diag, '诊断', 'diag'),
+    amItem(AM_ICONS.about, '关于', 'about'),
+    '<div class="am-sep"></div>',
+    accountState.logged
+      ? amItem(AM_ICONS.logout, '退出登录', 'logout', true)
+      : amItem(AM_ICONS.login, '扫码登录', 'login'),
+  ];
+  $('#amItems').innerHTML = rows.join('');
+  $('#amItems')
+    .querySelectorAll('.am-item')
+    .forEach((el) => {
+      el.onclick = async () => {
+        m.hidden = true;
+        const act = el.dataset.act;
+        if (act === 'diag' || act === 'about') showView(act);
+        else if (act === 'login') openLogin();
+        else if (act === 'logout') {
+          await B.logout();
+          toast('已退出登录');
+          checkLogin();
+        } else if (act === 'update') {
+          showView('about');
+          doCheck(false);
+        }
+      };
+    });
+  m.hidden = false;
 }
 
 // ---------------------------------------------------------------- 渲染
@@ -398,9 +459,11 @@ async function openLogin() {
   $('#loginModal').hidden = false;
   $('#qrTip').textContent = '正在生成二维码…';
   $('#qr').removeAttribute('src');
+  let key = null;
   try {
-    const { key, dataUrl } = await B.loginQrcode();
-    $('#qr').src = dataUrl;
+    const r = await B.loginQrcode();
+    key = r.key;
+    $('#qr').src = r.dataUrl;
     $('#qrTip').textContent = '请使用 B 站 App 扫码';
   } catch (e) {
     $('#qrTip').textContent = '二维码生成失败：' + e.message;
@@ -511,6 +574,27 @@ async function initAbout() {
 
 // ---------------------------------------------------------------- 事件
 $$('.nav-item').forEach((el) => { el.onclick = () => showView(el.dataset.view); });
+
+// 账号卡片 → 二级菜单；点击菜单外自动收起
+$('#account').onclick = () => {
+  const m = $('#accountMenu');
+  if (m.hidden) {
+    if (accountState.stale) checkLogin();
+    openAccountMenu();
+  } else m.hidden = true;
+};
+document.addEventListener('click', (e) => {
+  const m = $('#accountMenu');
+  if (!m.hidden && !m.contains(e.target) && !$('#account').contains(e.target)) {
+    m.hidden = true;
+  }
+});
+
+// 自绘标题栏的窗口控制
+$('#wMin').onclick = () => B.winMin();
+$('#wMax').onclick = () => B.winMaxToggle();
+$('#wClose').onclick = () => B.winClose();
+B.getVersion().then((v) => { $('#sideVer').textContent = 'v' + v; });
 $('#diagRun').onclick = runDiag;
 $('#diagBv').onkeydown = (e) => { if (e.key === 'Enter') runDiag(); };
 $('#openData').onclick = () => B.diagOpenData();

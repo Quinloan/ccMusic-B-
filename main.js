@@ -305,6 +305,22 @@ ipcMain.handle('login:poll', async (_e, key) => {
 ipcMain.handle('app:openExternal', (_e, url) => shell.openExternal(url));
 ipcMain.handle('app:version', () => app.getVersion());
 
+// 自绘标题栏的窗口控制
+ipcMain.handle('win:minimize', (e) => {
+  const w = BrowserWindow.fromWebContents(e.sender);
+  if (w) w.minimize();
+});
+ipcMain.handle('win:maxToggle', (e) => {
+  const w = BrowserWindow.fromWebContents(e.sender);
+  if (!w) return;
+  if (w.isMaximized()) w.unmaximize();
+  else w.maximize();
+});
+ipcMain.handle('win:close', (e) => {
+  const w = BrowserWindow.fromWebContents(e.sender);
+  if (w) w.close();
+});
+
 // ---------------------------------------------------------------- 诊断
 ipcMain.handle('diag:env', () => ({
   version: app.getVersion(),
@@ -496,6 +512,7 @@ function createWindow() {
     minWidth: 900,
     minHeight: 600,
     title: 'ccMusic',
+    frame: false, // 自绘标题栏
     backgroundColor: '#f7f7f9',
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
