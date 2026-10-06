@@ -24,12 +24,13 @@
     <header class="topbar">
       <div class="brand"><img class="brand-logo" src="../assets/icon.png" alt="" /><span>ccMusic</span></div>
       <div class="searchbox">
-        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.8-3.8"></path>
-        </svg>
         <input id="kw" type="text" placeholder="搜索关键词" />
-        <button id="go" class="primary">搜索</button>
+        <button id="go" class="go-icon" title="搜索" aria-label="搜索">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.8-3.8"></path>
+          </svg>
+        </button>
       </div>
       <button id="avatarBtn" class="topbar-avatar" title="账号">
         <img id="avatarImg" src="../assets/icon.png" alt="" />
