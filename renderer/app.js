@@ -1042,10 +1042,10 @@ function syncQualityBtn() {
   const el = $('#quality');
   const on = localStorage.prefFlac === '1';
   el.classList.toggle('on', on);
-  // 还没开始播时也要有字，否则按钮是空的看不见
+  // 还没开始播时按钮也要有字；文案恒为「无损优先」，亮=已开启，不亮=已关闭
   if (!audio.src) {
-    el.textContent = on ? '无损优先' : '音质';
-    el.title = on ? '已开启无损优先 · 点按关闭' : '点按开启无损优先';
+    el.textContent = '无损优先';
+    el.title = (on ? '已开启' : '已关闭') + ' · 点按切换';
   }
 }
 syncQualityBtn();
