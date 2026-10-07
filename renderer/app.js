@@ -759,6 +759,18 @@ async function playIndex(i) {
   await playQueueAt(i);
 }
 
+// 音质档位：码率数字看不懂，统一换成中文；真实码率放到悬浮提示里
+function qualityLabel(p, track) {
+  if (p.flac && track === p.flac) return { text: '无损', tip: 'FLAC 无损' };
+  if (p.dolby && track === p.dolby) return { text: '杜比', tip: '杜比全景声' };
+  const k = track.kbps || 0;
+  if (!k) return { text: '音轨', tip: '' };
+  return {
+    text: k >= 192 ? '高品' : k >= 128 ? '标准' : '流畅',
+    tip: k + 'kbps',
+  };
+}
+
 // 老歌单里可能只有 bvid 没有 cid（或 cid 过期），播放前补齐
 async function ensureCid(it) {
   if (it.cid) return it.cid;
@@ -784,8 +796,9 @@ async function playTrack(it, idx) {
     $('#bCover').src = it.cover || '';
     $('#bTitle').textContent = it.title;
     $('#bUp').textContent = it.up || it.author || '';
-    const isFlac = !!(p.flac && track === p.flac);
-    $('#quality').textContent = isFlac ? 'FLAC' : track.kbps ? `${track.kbps}kbps` : '音轨';
+    const q = qualityLabel(p, track);
+    $('#quality').textContent = q.text;
+    $('#quality').title = (q.tip ? q.tip + ' · ' : '') + '点按切换无损优先';
     $('#play').textContent = '⏸';
     B.setTrayTip(it.title); // 托盘悬停时显示当前曲目
     renderList();
@@ -1022,7 +1035,14 @@ $('#quitBtn').onclick = () => {
 
 // 无损优先激活时，音质按钮保持高亮
 function syncQualityBtn() {
-  $('#quality').classList.toggle('on', localStorage.prefFlac === '1');
+  const el = $('#quality');
+  const on = localStorage.prefFlac === '1';
+  el.classList.toggle('on', on);
+  // 还没开始播时也要有字，否则按钮是空的看不见
+  if (!audio.src) {
+    el.textContent = on ? '无损优先' : '音质';
+    el.title = on ? '已开启无损优先 · 点按关闭' : '点按开启无损优先';
+  }
 }
 syncQualityBtn();
 

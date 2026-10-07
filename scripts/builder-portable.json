@@ -3,7 +3,7 @@
   "productName": "ccMusic",
   "copyright": "Copyright © 2026 Quinloan",
   "directories": {
-    "output": "release-beta2"
+    "output": "release-beta3"
   },
   "files": [
     "main.js",
