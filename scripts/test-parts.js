@@ -105,6 +105,21 @@ async function getWin() {
   })`);
   log('[6] 仅播放（收藏夹应仍为', before, '）:', JSON.stringify(only));
 
+  // 6b. 取流策略：关闭=默认档(30232)，开启=最高档(该视频无 FLAC)
+  const pick = await run(`(async () => {
+    const p = await window.api.playurl(${JSON.stringify(BVID)}, ${JSON.stringify((await run('S.queue[0] ? S.queue[0].cid : ""')) || '')});
+    const pickOf = (pref) => {
+      localStorage.prefFlac = pref;
+      const t = pickTrack(p);
+      return { id: t.id, kbps: t.kbps, label: qualityLabel(p, t).text };
+    };
+    const off = pickOf('0');
+    const on = pickOf('1');
+    localStorage.prefFlac = '0';
+    return { rawFirst: p.raw && p.raw[0], flac: !!p.flac, off, on };
+  })()`);
+  log('[6b] 取流策略:', JSON.stringify(pick));
+
   // 7. 打开播放列表面板并截图
   await run(`$('#queuePanel').hidden = false; renderQueue()`);
   await wait(400);

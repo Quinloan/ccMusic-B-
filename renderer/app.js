@@ -759,19 +759,22 @@ async function playIndex(i) {
   await playQueueAt(i);
 }
 
-let flacMissNoticed = false; // 「想要无损但没拿到」只提示一次，不每首都弹
+// 取流策略：
+//   无损优先 = 有 FLAC 就用 FLAC，没有就取能取到的最高音质
+//   关闭     = B 站默认那一档（接口原始顺序第一条），不刻意挑最高
+function pickTrack(p) {
+  if (localStorage.prefFlac === '1') return p.flac || p.tracks[0];
+  const defId = p.raw && p.raw.length ? p.raw[0].id : null;
+  const def = defId != null ? p.tracks.find((t) => t.id === defId) : null;
+  return def || p.tracks[p.tracks.length - 1];
+}
 
-// 音质档位：码率数字看不懂，统一换成中文；真实码率放到悬浮提示里
+// 音质标签：只分「无损 / 杜比 / 普通」三档，不再细分
 function qualityLabel(p, track) {
   if (p.flac && track === p.flac) return { text: '无损', tip: 'FLAC 无损' };
   if (p.dolby && track === p.dolby) return { text: '杜比', tip: '杜比全景声' };
   const k = track.kbps || 0;
-  if (!k) return { text: '音轨', tip: '' };
-  // B 站有损最高档实测约 181kbps（标称 192），所以阈值取 160 / 100
-  return {
-    text: k >= 160 ? '高品' : k >= 100 ? '标准' : '流畅',
-    tip: k + 'kbps',
-  };
+  return { text: '普通', tip: k ? k + 'kbps' : '' };
 }
 
 // 老歌单里可能只有 bvid 没有 cid（或 cid 过期），播放前补齐
@@ -790,12 +793,7 @@ async function playTrack(it, idx) {
   try {
     await ensureCid(it);
     const p = await B.playurl(it.bvid, it.cid);
-    let track;
-    let wantedFlac = false; // 想要无损但 B 站没给
-    if (localStorage.prefFlac === '1') {
-      if (p.flac) track = p.flac;
-      else { track = p.tracks[0]; wantedFlac = true; }
-    } else track = p.tracks[0];
+    const track = pickTrack(p);
     if (idx !== undefined) S.cur = idx;
     audio.src = track.url;
     await audio.play();
@@ -804,17 +802,7 @@ async function playTrack(it, idx) {
     $('#bUp').textContent = it.up || it.author || '';
     const q = qualityLabel(p, track);
     $('#quality').textContent = q.text;
-    // 开着无损优先却拿不到无损，把原因说清楚，避免以为开关没用
-    if (wantedFlac) {
-      $('#quality').title =
-        `${q.tip} · 已开无损优先，但 B 站没给这个视频的无损音源（多因非大会员）· 点按关闭`;
-      if (!flacMissNoticed) {
-        flacMissNoticed = true;
-        toast('已开无损优先，但没拿到无损音源（通常需要大会员）');
-      }
-    } else {
-      $('#quality').title = (q.tip ? q.tip + ' · ' : '') + '点按切换无损优先';
-    }
+    $('#quality').title = (q.tip ? q.tip + ' · ' : '') + '点按切换无损优先';
     $('#play').textContent = '⏸';
     B.setTrayTip(it.title); // 托盘悬停时显示当前曲目
     renderList();

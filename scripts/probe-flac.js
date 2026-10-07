@@ -39,7 +39,8 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const r = await win.webContents.executeJavaScript(`(async () => {
     const p = await window.api.playurl(${JSON.stringify(BVID)}, ${JSON.stringify(CID)});
     return {
-      tracks: p.tracks.map(t => t.kbps + 'kbps'),
+      raw: p.raw,
+      sorted: p.tracks.map(t => t.id + ':' + t.kbps),
       flac: p.flac ? (p.flac.kbps + 'kbps / codecs=' + p.flac.codecs) : null,
       dolby: !!p.dolby,
     };

@@ -316,6 +316,8 @@ ipcMain.handle('bili:playurl', async (_e, bvid, cid) => {
     url: a.baseUrl,
   });
   const payload = {
+    // raw 保留 B 站原始顺序，渲染端据此判断「默认那一档」
+    raw: audio.map((a) => ({ id: a.id, kbps: Math.round((a.bandwidth || 0) / 1000) })),
     tracks: audio.map(norm).sort((a, b) => b.kbps - a.kbps),
     flac: j.data.flac && j.data.flac.audio ? norm(j.data.flac.audio) : null,
     dolby: j.data.dolby && j.data.dolby.audio ? norm(j.data.dolby.audio) : null,
