@@ -683,6 +683,17 @@ function createWindow() {
   });
 
   mainWin = win;
+  // 开发期：Ctrl+R / F5 直接刷新界面，改了渲染端代码连重启都不用
+  if (!app.isPackaged) {
+    win.webContents.on('before-input-event', (e, input) => {
+      const hit = (input.control && input.key.toLowerCase() === 'r') || input.key === 'F5';
+      if (hit) {
+        e.preventDefault();
+        win.webContents.reload();
+      }
+    });
+  }
+
   // 首帧就绪即显示；兜底 2.5s 强制显示，防止极少数情况下 ready-to-show 不触发
   win.once('ready-to-show', () => {
     if (!win.isVisible()) win.show();
