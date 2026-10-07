@@ -1,0 +1,36 @@
+{
+  "appId": "com.ccmusic.app",
+  "productName": "ccMusic",
+  "copyright": "Copyright © 2026 Quinloan",
+  "directories": {
+    "output": "release-portable"
+  },
+  "files": [
+    "main.js",
+    "preload.cjs",
+    "renderer/**",
+    "package.json",
+    "assets/icon.png"
+  ],
+  "win": {
+    "icon": "assets/icon.ico",
+    "target": [
+      {
+        "target": "portable",
+        "arch": ["x64"]
+      },
+      {
+        "target": "zip",
+        "arch": ["x64"]
+      }
+    ]
+  },
+  "artifactName": "${productName}-${version}-Portable.${ext}",
+  "portable": {
+    "requestExecutionLevel": "user"
+  },
+  "nsis": {
+    "oneClick": true,
+    "shortcutName": "ccMusic"
+  }
+}
