@@ -61,7 +61,8 @@ import re
 label = {"01-library.png": "主界面（收藏夹 + 正在播放 + 无损高亮）",
          "02-search.png": "搜索结果（一键加入收藏夹）",
          "03-about.png": "设置中心（自启动 / 媒体键 / 关闭行为）",
-         "04-menu.png": "账号菜单"}.get
+         "04-menu.png": "账号菜单",
+         "05-queue.png": "播放列表（与收藏夹分离的临时队列）"}.get
 lines = ["## 界面预览", ""]
 for name, u in urls:
     lines.append("![%s](%s)" % (label(name) or name, u))

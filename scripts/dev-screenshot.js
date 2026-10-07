@@ -11,6 +11,7 @@ const openAbout = process.argv.includes('--about');
 const testBack = process.argv.includes('--back');
 const demo = process.argv.includes('--demo');
 const search = process.argv.includes('--search');
+const openQueue = process.argv.includes('--queue');
 
 // 演示数据注入脚本（在渲染进程执行）
 const DEMO_JS = `
@@ -31,7 +32,8 @@ const DEMO_JS = `
     return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
   };
   var item = function (bvid, title, up, dur, i) {
-    return { bvid: bvid, cid: 1000 + i, title: title, up: up, duration: dur, cover: mk(C[i % C.length]) };
+    return { bvid: bvid, cid: 1000 + i, title: title, up: up, duration: dur,
+             cover: mk(C[i % C.length]) };
   };
   var f1 = {
     id: 'f1', name: '我的收藏夹', items: [
@@ -58,6 +60,11 @@ const DEMO_JS = `
   S.cur = 2;
   renderFolders();
   renderList();
+  // 顺带把播放列表（队列）也填上，截图层能展示右侧面板
+  f1.items.forEach(function (x) { x.vtitle = f1.name; });
+  S.queue = f1.items.slice(0, 10).map(function (x) { return Object.assign({}, x); });
+  S.qcur = 2;
+  renderQueue();
 
   // 底部播放条：伪装成正在播放
   var cover = mk(C[2]);
@@ -143,6 +150,12 @@ app.whenReady().then(async () => {
     await new Promise((r) => setTimeout(r, 400));
     await win.webContents.executeJavaScript(
       "document.querySelector('#playSettings')?.scrollIntoView({ block: 'start' }); 'ok'"
+    );
+    await new Promise((r) => setTimeout(r, 300));
+  }
+  if (openQueue) {
+    await win.webContents.executeJavaScript(
+      "document.querySelector('#queuePanel').hidden = false; renderQueue(); 'ok'"
     );
     await new Promise((r) => setTimeout(r, 300));
   }
