@@ -759,14 +759,17 @@ async function playIndex(i) {
   await playQueueAt(i);
 }
 
+let flacMissNoticed = false; // 「想要无损但没拿到」只提示一次，不每首都弹
+
 // 音质档位：码率数字看不懂，统一换成中文；真实码率放到悬浮提示里
 function qualityLabel(p, track) {
   if (p.flac && track === p.flac) return { text: '无损', tip: 'FLAC 无损' };
   if (p.dolby && track === p.dolby) return { text: '杜比', tip: '杜比全景声' };
   const k = track.kbps || 0;
   if (!k) return { text: '音轨', tip: '' };
+  // B 站有损最高档实测约 181kbps（标称 192），所以阈值取 160 / 100
   return {
-    text: k >= 192 ? '高品' : k >= 128 ? '标准' : '流畅',
+    text: k >= 160 ? '高品' : k >= 100 ? '标准' : '流畅',
     tip: k + 'kbps',
   };
 }
@@ -788,8 +791,11 @@ async function playTrack(it, idx) {
     await ensureCid(it);
     const p = await B.playurl(it.bvid, it.cid);
     let track;
-    if (localStorage.prefFlac === '1' && p.flac) track = p.flac;
-    else track = p.tracks[0];
+    let wantedFlac = false; // 想要无损但 B 站没给
+    if (localStorage.prefFlac === '1') {
+      if (p.flac) track = p.flac;
+      else { track = p.tracks[0]; wantedFlac = true; }
+    } else track = p.tracks[0];
     if (idx !== undefined) S.cur = idx;
     audio.src = track.url;
     await audio.play();
@@ -798,7 +804,17 @@ async function playTrack(it, idx) {
     $('#bUp').textContent = it.up || it.author || '';
     const q = qualityLabel(p, track);
     $('#quality').textContent = q.text;
-    $('#quality').title = (q.tip ? q.tip + ' · ' : '') + '点按切换无损优先';
+    // 开着无损优先却拿不到无损，把原因说清楚，避免以为开关没用
+    if (wantedFlac) {
+      $('#quality').title =
+        `${q.tip} · 已开无损优先，但 B 站没给这个视频的无损音源（多因非大会员）· 点按关闭`;
+      if (!flacMissNoticed) {
+        flacMissNoticed = true;
+        toast('已开无损优先，但没拿到无损音源（通常需要大会员）');
+      }
+    } else {
+      $('#quality').title = (q.tip ? q.tip + ' · ' : '') + '点按切换无损优先';
+    }
     $('#play').textContent = '⏸';
     B.setTrayTip(it.title); // 托盘悬停时显示当前曲目
     renderList();
