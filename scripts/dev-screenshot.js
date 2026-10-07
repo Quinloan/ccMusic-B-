@@ -76,7 +76,7 @@ const DEMO_JS = `
   var du = document.querySelector('#dur'); if (du) du.textContent = '04:29';
   var sk = document.querySelector('#seek'); if (sk) { sk.value = 270; }
   var q = document.querySelector('#quality');
-  if (q) { q.textContent = '无损'; q.classList.add('on'); }
+  if (q) { q.textContent = '无损优先'; q.classList.add('on'); }
   var av = document.querySelector('#avatarImg');
   if (av) {
     av.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(

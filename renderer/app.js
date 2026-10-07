@@ -769,13 +769,8 @@ function pickTrack(p) {
   return def || p.tracks[p.tracks.length - 1];
 }
 
-// 音质标签：只分「无损 / 杜比 / 普通」三档，不再细分
-function qualityLabel(p, track) {
-  if (p.flac && track === p.flac) return { text: '无损', tip: 'FLAC 无损' };
-  if (p.dolby && track === p.dolby) return { text: '杜比', tip: '杜比全景声' };
-  const k = track.kbps || 0;
-  return { text: '普通', tip: k ? k + 'kbps' : '' };
-}
+// 按钮文字恒为「无损优先」，亮/不亮表达开关；真实码率只放进悬浮提示
+let curKbps = 0;
 
 // 老歌单里可能只有 bvid 没有 cid（或 cid 过期），播放前补齐
 async function ensureCid(it) {
@@ -800,9 +795,8 @@ async function playTrack(it, idx) {
     $('#bCover').src = it.cover || '';
     $('#bTitle').textContent = it.title;
     $('#bUp').textContent = it.up || it.author || '';
-    const q = qualityLabel(p, track);
-    $('#quality').textContent = q.text;
-    $('#quality').title = (q.tip ? q.tip + ' · ' : '') + '点按切换无损优先';
+    curKbps = track.kbps || 0;
+    syncQualityBtn();
     $('#play').textContent = '⏸';
     B.setTrayTip(it.title); // 托盘悬停时显示当前曲目
     renderList();
@@ -1037,16 +1031,14 @@ $('#quitBtn').onclick = () => {
   if (confirm('确定退出 ccMusic 吗？')) B.appQuit();
 };
 
-// 无损优先激活时，音质按钮保持高亮
+// 音质按钮：文字恒为「无损优先」，亮=已开启，不亮=已关闭
 function syncQualityBtn() {
   const el = $('#quality');
   const on = localStorage.prefFlac === '1';
   el.classList.toggle('on', on);
-  // 还没开始播时按钮也要有字；文案恒为「无损优先」，亮=已开启，不亮=已关闭
-  if (!audio.src) {
-    el.textContent = '无损优先';
-    el.title = (on ? '已开启' : '已关闭') + ' · 点按切换';
-  }
+  el.textContent = '无损优先';
+  el.title = (audio.src && curKbps ? '当前 ' + curKbps + 'kbps · ' : '')
+    + (on ? '已开启' : '已关闭') + ' · 点按切换';
 }
 syncQualityBtn();
 

@@ -111,7 +111,7 @@ async function getWin() {
     const pickOf = (pref) => {
       localStorage.prefFlac = pref;
       const t = pickTrack(p);
-      return { id: t.id, kbps: t.kbps, label: qualityLabel(p, t).text };
+      return { id: t.id, kbps: t.kbps };
     };
     const off = pickOf('0');
     const on = pickOf('1');
