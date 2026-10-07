@@ -222,6 +222,33 @@
   <div id="amItems"></div>
 </div>
 
+<div id="partsModal" class="modal" hidden>
+  <div class="modal-box parts-box">
+    <div class="parts-head">
+      <div class="ph-main">
+        <div class="ph-title" id="pmTitle">选择分 P</div>
+        <div class="ph-sub muted" id="pmSub"></div>
+      </div>
+      <button id="pmSwitch" class="link-btn" hidden></button>
+    </div>
+    <div class="parts-tools">
+      <button id="pmAll" class="mini">全选</button>
+      <button id="pmNone" class="mini">全不选</button>
+      <button id="pmInvert" class="mini">反选</button>
+      <span class="grow"></span>
+      <span class="muted" id="pmSum">已选 0 首</span>
+    </div>
+    <div id="pmList" class="parts-list"></div>
+    <div class="parts-foot">
+      <span class="muted" id="pmHint">分 P 会按顺序加入当前收藏夹，可连播</span>
+      <span class="grow"></span>
+      <button id="pmCancel">取消</button>
+      <button id="pmAdd" class="primary">加入歌单</button>
+      <button id="pmPlay" class="primary">加入并播放</button>
+    </div>
+  </div>
+</div>
+
 <div id="loginModal" class="modal" hidden>
   <div class="modal-box">
     <h3>扫码登录 B 站</h3>

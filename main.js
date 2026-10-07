@@ -228,6 +228,43 @@ ipcMain.handle('bili:video', async (_e, id) => {
   const j = await apiGet(API, '/x/web-interface/view', param);
   if (!j || j.code !== 0) throw new Error((j && j.message) || '视频信息获取失败');
   const d = j.data;
+  // 分 P：一个视频可能有几十上百个 P，每个 P 有独立 cid/标题/时长，必须逐个可播
+  const parts = (d.pages || []).map((p) => ({
+    cid: p.cid,
+    page: p.page,
+    part: p.part || ('P' + p.page),
+    duration: p.duration || 0,
+    cover: p.first_frame || d.pic,
+  }));
+  // 视频合集（跨多个 BV 的「合集」），有就一并返回，让 UI 能一次性列出
+  let season = null;
+  const sections = (d.ugc_season && d.ugc_season.sections) || [];
+  if (sections.length) {
+    const eps = [];
+    for (const s of sections) {
+      for (const ep of s.episodes || []) {
+        if (!ep || !ep.bvid) continue;
+        eps.push({
+          bvid: ep.bvid,
+          aid: ep.aid,
+          cid: ep.cid,
+          page: ep.page || 1,
+          title: ep.title || (ep.arc && ep.arc.title) || '',
+          duration: (ep.arc && ep.arc.duration) || ep.duration || 0,
+          cover: (ep.arc && ep.arc.pic) || ep.cover || d.pic,
+          up: (ep.arc && ep.arc.author && ep.arc.author.name) || (d.owner ? d.owner.name : ''),
+        });
+      }
+    }
+    if (eps.length) {
+      season = {
+        id: d.ugc_season.id,
+        title: (d.ugc_season.title || '').trim() || d.title,
+        cover: d.ugc_season.cover || d.pic,
+        episodes: eps,
+      };
+    }
+  }
   return {
     bvid: d.bvid,
     aid: d.aid,
@@ -237,7 +274,9 @@ ipcMain.handle('bili:video', async (_e, id) => {
     up: d.owner ? d.owner.name : '',
     duration: d.duration,
     play: d.stat ? d.stat.view : null,
-    parts: (d.pages || []).map((p) => ({ cid: p.cid, page: p.page, part: p.part })),
+    videos: d.videos || parts.length,
+    parts,
+    season,
   };
 });
 

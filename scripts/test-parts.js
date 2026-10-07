@@ -1,0 +1,98 @@
+// 端到端验证多 P 功能：跑真实 main.js（真实网络 + 真实 B 站接口），
+// 在渲染进程里执行 pickParts → 全选 → 加入歌单 → 播放所选，最后截图。
+// 用法: node scripts/test-parts.js <BV号> [输出截图.png]
+const path = require('path');
+const fs = require('fs');
+const { app, BrowserWindow } = require('electron');
+
+const BVID = process.argv[2] || 'BV1FPjy6TEiE';
+const OUT = process.argv[3] || 'shots/99-parts.png';
+
+// 用独立 userData，避免与已安装的 ccMusic 抢单例锁 / 覆盖真实歌单
+app.setPath('userData', path.join(app.getPath('temp'), 'ccmusic-test-parts'));
+
+require('../main.js'); // 注册全部 IPC 并创建窗口
+
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function getWin() {
+  for (let i = 0; i < 100; i++) {
+    const w = BrowserWindow.getAllWindows()[0];
+    if (w && w.webContents) {
+      try { await w.webContents.executeJavaScript('1'); return w; } catch (e) { /* 还没就绪 */ }
+    }
+    await wait(200);
+  }
+  throw new Error('窗口一直没就绪');
+}
+
+(async () => {
+  const win = await getWin();
+  await wait(2500); // 等渲染端 init + session 就绪
+  const run = (js) => win.webContents.executeJavaScript(js);
+  const log = (...a) => console.log(...a);
+
+  // 1. 直接调主进程接口看返回值（不经 UI）
+  const meta = await run(`(async () => {
+    const m = await window.api.video(${JSON.stringify(BVID)});
+    return { videos: m.videos, parts: (m.parts||[]).length, title: m.title,
+             duration: m.duration, first: m.parts[0], second: m.parts[1], hasSeason: !!m.season };
+  })()`);
+  log('[1] 视频信息:', JSON.stringify(meta, null, 0).slice(0, 500));
+
+  // 2. 打开分 P 面板
+  await run(`pickParts({ bvid: ${JSON.stringify(BVID)} })`);
+  await wait(2500);
+  const panel = await run(`({
+    open: !document.querySelector('#partsModal').hidden,
+    rows: document.querySelectorAll('#pmList .part-row').length,
+    checked: Array.from(document.querySelectorAll('#pmList .part-row input')).filter(i=>i.checked).length,
+    sub: document.querySelector('#pmSub').textContent,
+    sum: document.querySelector('#pmSum').textContent,
+    addBtn: document.querySelector('#pmAdd').textContent,
+  })`);
+  log('[2] 分P面板:', JSON.stringify(panel));
+
+  // 3. 全选 → 加入歌单
+  await run(`$('#pmAll').click()`);
+  await wait(200);
+  await run(`$('#pmAdd').click()`);
+  await wait(1200);
+  const lib = await run(`({
+    count: folder().items.length,
+    first: folder().items[0] && { page: folder().items[0].page, cid: folder().items[0].cid, title: folder().items[0].title, up: folder().items[0].up, dur: folder().items[0].duration },
+    last: folder().items.slice(-1)[0] && { page: folder().items.slice(-1)[0].page, title: folder().items.slice(-1)[0].title },
+    rows: document.querySelectorAll('#list .row').length,
+    badges: document.querySelectorAll('#list .ptag').length,
+    libCount: document.querySelector('#libCount').textContent,
+  })`);
+  log('[3] 加入歌单:', JSON.stringify(lib));
+
+  // 4. 播放第 3 P（验证 cid 取流链路）
+  await run(`playIndex(2)`);
+  await wait(3500);
+  const play = await run(`({
+    cur: S.cur, paused: audio.paused, dur: Math.round(audio.duration||0),
+    src: (audio.currentSrc||'').slice(0, 70),
+    bTitle: document.querySelector('#bTitle').textContent,
+    quality: document.querySelector('#quality').textContent,
+    err: audio.error && audio.error.message,
+  })`);
+  log('[4] 播放 P3:', JSON.stringify(play));
+
+  // 5. 重复加入去重
+  await run(`pickParts({ bvid: ${JSON.stringify(BVID)} })`);
+  await wait(2000);
+  const again = await run(`({
+    rows: document.querySelectorAll('#pmList .part-row').length,
+    inLib: document.querySelectorAll('#pmList .part-row.in-lib').length,
+    checked: Array.from(document.querySelectorAll('#pmList .part-row input')).filter(i=>i.checked).length,
+  })`);
+  log('[5] 再次打开(应全部标记已在歌单且不勾选):', JSON.stringify(again));
+
+  fs.mkdirSync(path.dirname(OUT), { recursive: true });
+  const img = await win.webContents.capturePage();
+  fs.writeFileSync(OUT, img.toPNG());
+  log('saved:', OUT);
+  app.exit(0);
+})().catch((e) => { console.error('FAIL:', e); app.exit(1); });

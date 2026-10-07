@@ -68,25 +68,32 @@ function goBack() {
 
 // ---------------------------------------------------------------- 输入识别
 // 支持三种输入：关键词 / BV 号、av 号 / B 站链接（含 b23.tv 短链）
+// 链接里的分 P 序号：https://.../BVxxx/?p=3
+function pageFromUrl(u) {
+  const m = String(u || '').match(/[?&]p=(\d{1,4})/i);
+  return m ? +m[1] : 0;
+}
+
 function parseInput(raw) {
   const s = (raw || '').trim();
   if (!s) return null;
   if (/b23\.tv/i.test(s) || /bilibili\.com/i.test(s) || /^https?:\/\//i.test(s)) {
-    return { type: 'url', value: s };
+    return { type: 'url', value: s, page: pageFromUrl(s) };
   }
   const bv = s.match(/BV[0-9A-Za-z]{10}/);
-  if (bv) return { type: 'bvid', value: bv[0] };
+  if (bv) return { type: 'bvid', value: bv[0], page: pageFromUrl(s) };
   const av = s.match(/\bav(\d+)\b/i) || s.match(/^(\d{5,})$/);
-  if (av) return { type: 'aid', value: av[1] };
-  return { type: 'keyword', value: s };
+  if (av) return { type: 'aid', value: av[1], page: pageFromUrl(s) };
+  return { type: 'keyword', value: s, page: 0 };
 }
 
-// 从最终 URL 里提取视频 id
+// 从最终 URL 里提取视频 id（含分 P 序号）
 function idFromUrl(u) {
+  const page = pageFromUrl(u);
   const bv = u.match(/BV[0-9A-Za-z]{10}/);
-  if (bv) return { type: 'bvid', value: bv[0] };
+  if (bv) return { type: 'bvid', value: bv[0], page };
   const av = u.match(/\/video\/av(\d+)/i) || u.match(/[?&]aid=(\d+)/i);
-  if (av) return { type: 'aid', value: av[1] };
+  if (av) return { type: 'aid', value: av[1], page };
   return null;
 }
 
@@ -234,10 +241,13 @@ function renderFolders() {
 }
 
 function rowHtml(it, i) {
-  return `<div class="row ${i === S.cur ? 'on' : ''}" data-i="${i}">
+  const pg = +it.page || 1;
+  // 多 P 视频的分 P 条目：标题前带 P 号徽标，悬浮提示所属视频
+  const badge = pg > 1 || (it.vtitle && it.vtitle !== it.title) ? `<span class="ptag">P${pg}</span>` : '';
+  return `<div class="row ${i === S.cur ? 'on' : ''}" data-i="${i}" title="${esc(it.vtitle || it.title)}">
     <img src="${esc(it.cover || '')}" loading="lazy" />
     <div class="meta">
-      <div class="t">${esc(it.title)}</div>
+      <div class="t">${badge}${esc(it.title)}</div>
       <div class="u">${esc(it.up || it.author || '')} · ${fmtDur(it.duration)}</div>
     </div>
     <div class="acts">
@@ -274,6 +284,7 @@ function renderList() {
       const it = f.items[i];
       showCtxMenu(e.clientX, e.clientY, [
         { label: '播放', action: () => playIndex(i) },
+        { label: '该视频的全部分 P…', action: () => openPartsOfVideo(it.bvid) },
         { label: '在浏览器打开 B 站页面', action: () => B.openExternal('https://www.bilibili.com/video/' + it.bvid) },
         { label: '复制视频链接', action: () => { B.copyText('https://www.bilibili.com/video/' + it.bvid); toast('链接已复制'); } },
         { label: '从歌单移除', action: () => { f.items.splice(i, 1); if (S.cur >= f.items.length) S.cur = -1; save(); renderFolders(); renderList(); } },
@@ -285,10 +296,11 @@ function renderList() {
 function renderResults(append = false) {
   const html = S.results.map((r, i) => {
     const playTxt = r.play != null && r.play !== '' ? ` · ${fmtPlay(r.play)}播放` : '';
+    const ptag = r.partsCount > 1 ? `<span class="ptag">${r.partsCount} P</span>` : '';
     return `<div class="row" data-i="${i}">
       <img src="${r.pic}" loading="lazy" />
       <div class="meta">
-        <div class="t">${esc(r.title)}</div>
+        <div class="t">${ptag}${esc(r.title)}</div>
         <div class="u">${esc(r.author || '')} · ${fmtDur(r.duration)}${playTxt}</div>
       </div>
       <div class="acts">
@@ -314,6 +326,7 @@ function renderResults(append = false) {
       showCtxMenu(e.clientX, e.clientY, [
         { label: '播放', action: () => playSearchItem(r) },
         { label: '加入收藏夹', action: () => addToFolder(r) },
+      { label: '选择分 P / 合辑…', action: () => pickParts(r) },
         { label: '在浏览器打开 B 站页面', action: () => B.openExternal('https://www.bilibili.com/video/' + r.bvid) },
         { label: '复制视频链接', action: () => { B.copyText('https://www.bilibili.com/video/' + r.bvid); toast('链接已复制'); } },
       ]);
@@ -364,6 +377,7 @@ async function handleSearch() {
       if (!id) throw new Error('链接里没有识别到视频 ID');
     }
     const meta = await B.video(id.value);
+    const parts = meta.parts || [];
     S.results = [{
       bvid: meta.bvid,
       title: meta.title,
@@ -371,10 +385,18 @@ async function handleSearch() {
       pic: meta.cover,
       duration: meta.duration,
       play: meta.play,
+      page: id.page || 0,
+      partsCount: parts.length,
+      meta,
     }];
     S.hasMore = false;
     renderResults();
-    toast('已识别视频');
+    if (parts.length > 1) {
+      openPartsPicker(meta, { only: id.page || 0 });
+      toast(`识别到 ${parts.length} 个分 P`);
+    } else {
+      toast('已识别视频');
+    }
   } catch (e) {
     $('#results').innerHTML = `<div class="empty">解析失败：${esc(e.message)}</div>`;
   }
@@ -400,13 +422,168 @@ async function doSearch(page = 1, append = false) {
   }
 }
 
+// ---------------------------------------------------------------- 分 P / 合集选择面板
+// 一个视频可能有几十上百个 P，每个 P 是独立的一首歌，必须能逐个选、逐个加入
+let pmMeta = null;      // 当前视频信息（含 parts / season）
+let pmMode = 'parts';   // parts | season
+let pmWantPlay = false; // 加入后是否立即播放
+
+const itemKey = (it) => it.bvid + ':' + (+it.page || 1);
+
+function pmEntries() {
+  if (pmMode === 'season' && pmMeta.season) {
+    return (pmMeta.season.episodes || []).map((ep, i) => ({
+      key: ep.bvid + ':' + (ep.page || 1),
+      no: String(i + 1),
+      name: ep.title || ('第 ' + (i + 1) + ' 集'),
+      duration: ep.duration || 0,
+      bvid: ep.bvid, cid: ep.cid, page: ep.page || 1,
+      cover: ep.cover || pmMeta.cover, up: ep.up || pmMeta.up,
+      vtitle: pmMeta.season.title,
+    }));
+  }
+  const multi = (pmMeta.parts || []).length > 1;
+  return (pmMeta.parts || []).map((p) => ({
+    key: pmMeta.bvid + ':' + p.page,
+    no: 'P' + p.page,
+    name: multi ? p.part || ('P' + p.page) : pmMeta.title,
+    duration: p.duration || 0,
+    bvid: pmMeta.bvid, cid: p.cid, page: p.page,
+    cover: p.cover || pmMeta.cover, up: pmMeta.up,
+    vtitle: pmMeta.title,
+  }));
+}
+
+function fmtTotal(sec) {
+  const s = Math.max(0, Math.round(sec || 0));
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+  return h > 0 ? `${h} 小时 ${m} 分` : `${m} 分`;
+}
+
+function pmSelectedKeys() {
+  return Array.from($$('#pmList .part-row'))
+    .filter((el) => el.querySelector('input').checked)
+    .map((el) => el.dataset.key);
+}
+
+function pmUpdateSum() {
+  const keys = new Set(pmSelectedKeys());
+  const all = pmEntries();
+  const sec = all.filter((e) => keys.has(e.key)).reduce((s, e) => s + (e.duration || 0), 0);
+  $('#pmSum').textContent = `已选 ${keys.size} 首 · ${fmtTotal(sec)}`;
+  $('#pmAdd').textContent = keys.size ? `加入 ${keys.size} 首` : '加入歌单';
+  $('#pmPlay').textContent = keys.size ? `加入并播放 ${keys.size} 首` : '加入并播放';
+  $('#pmAdd').disabled = !keys.size;
+  $('#pmPlay').disabled = !keys.size;
+}
+
+function pmRenderList() {
+  const all = pmEntries();
+  const inLib = new Set((folder() ? folder().items : []).map(itemKey));
+  $('#pmList').innerHTML = all
+    .map(
+      (e) => `<label class="part-row${inLib.has(e.key) ? ' in-lib' : ''}" data-key="${esc(e.key)}">
+        <input type="checkbox" ${inLib.has(e.key) ? '' : 'checked'} />
+        <span class="pno">${esc(e.no)}</span>
+        <span class="pname">${esc(e.name)}${inLib.has(e.key) ? '<i class="padded">已在歌单</i>' : ''}</span>
+        <span class="ptime">${fmt(e.duration)}</span>
+      </label>`
+    )
+    .join('');
+  $('#pmList').querySelectorAll('.part-row').forEach((el) => {
+    el.querySelector('input').onchange = pmUpdateSum;
+  });
+  pmUpdateSum();
+}
+
+function openPartsPicker(meta, opts = {}) {
+  pmMeta = meta;
+  pmWantPlay = !!opts.play;
+  pmMode = opts.mode || 'parts';
+  const parts = meta.parts || [];
+  const multi = parts.length > 1;
+  $('#pmTitle').textContent = meta.title;
+  const total = parts.reduce((s, p) => s + (p.duration || 0), 0);
+  $('#pmSub').textContent = multi
+    ? `共 ${parts.length} 个分 P · 总时长 ${fmtTotal(total)}`
+    : `单 P 视频 · ${fmtTotal(meta.duration)}`;
+  const sw = $('#pmSwitch');
+  if (meta.season && meta.season.episodes && meta.season.episodes.length > 1 && meta.parts) {
+    sw.hidden = false;
+    sw.textContent = pmMode === 'parts'
+      ? `合辑《${meta.season.title}》共 ${meta.season.episodes.length} 个视频 ›`
+      : `‹ 回到分 P（${parts.length} P）`;
+  } else {
+    sw.hidden = true;
+  }
+  $('#partsModal').hidden = false;
+  pmRenderList();
+  // 链接里带了 ?p=N 时只选那一 P，并把列表滚到该处
+  const only = +opts.only || 0;
+  if (only > 0) {
+    $$('#pmList .part-row').forEach((el) => {
+      const on = el.querySelector('.pno').textContent === 'P' + only;
+      el.querySelector('input').checked = on;
+    });
+    pmUpdateSum();
+    const hit = $('#pmList .part-row[data-key="' + meta.bvid + ':' + only + '"]');
+    if (hit) hit.scrollIntoView({ block: 'center' });
+  }
+}
+
+function closePartsPicker() {
+  $('#partsModal').hidden = true;
+  pmMeta = null;
+}
+
+async function pmCommit(withPlay) {
+  const keys = new Set(pmSelectedKeys());
+  if (!keys.size) return toast('至少选一个分 P');
+  const f = folder();
+  if (!f) return toast('先建一个收藏夹');
+  const all = pmEntries().filter((e) => keys.has(e.key));
+  let added = 0, dup = 0;
+  for (const e of all) {
+    if (f.items.some((x) => itemKey(x) === e.key)) { dup++; continue; }
+    f.items.push({
+      bvid: e.bvid, cid: e.cid, page: e.page,
+      title: e.name, vtitle: e.vtitle || e.name,
+      up: e.up, cover: e.cover, duration: e.duration,
+    });
+    added++;
+  }
+  save(); renderFolders(); renderList();
+  closePartsPicker();
+  toast(`已加入 ${added} 首到《${f.name}》${dup ? `（${dup} 首已存在，已跳过）` : ''}`);
+  if (!added && !withPlay) return;
+  showView('library');
+  if (withPlay) {
+    const first = f.items.find((x) => keys.has(itemKey(x)));
+    if (first) await playTrack(first, f.items.indexOf(first));
+  }
+}
+
+// 打开某个视频的全部分 P（歌单里某一首 → 补加同视频其它 P）
+async function openPartsOfVideo(bvid, opts = {}) {
+  try {
+    toast('读取分 P 信息…');
+    const meta = await B.video(bvid);
+    openPartsPicker(meta, opts);
+  } catch (e) {
+    toast('读取失败：' + e.message);
+  }
+}
+
 async function addToFolder(r) {
   try {
-    const meta = await B.video(r.bvid);
+    const meta = (r.meta && r.meta.bvid === r.bvid) ? r.meta : await B.video(r.bvid);
+    r.meta = meta;
+    if ((meta.parts || []).length > 1) return openPartsPicker(meta, { only: r.page || 0 });
     const f = folder();
-    if (f.items.some((x) => x.bvid === meta.bvid)) return toast('已经在歌单里了');
+    const key = meta.bvid + ':1';
+    if (f.items.some((x) => itemKey(x) === key)) return toast('已经在歌单里了');
     f.items.push({
-      bvid: meta.bvid, cid: meta.cid, title: meta.title,
+      bvid: meta.bvid, cid: meta.cid, page: 1, title: meta.title, vtitle: meta.title,
       up: meta.up, cover: meta.cover, duration: meta.duration,
     });
     save(); renderFolders(); renderList();
@@ -418,15 +595,31 @@ async function addToFolder(r) {
 
 async function playSearchItem(r) {
   try {
-    const meta = await B.video(r.bvid);
+    const meta = (r.meta && r.meta.bvid === r.bvid) ? r.meta : await B.video(r.bvid);
+    r.meta = meta;
+    if ((meta.parts || []).length > 1) {
+      return openPartsPicker(meta, { only: r.page || 0, play: true });
+    }
     S.cur = -1;
     await playTrack({
-      bvid: meta.bvid, cid: meta.cid, title: meta.title,
+      bvid: meta.bvid, cid: meta.cid, page: 1, title: meta.title, vtitle: meta.title,
       up: meta.up, cover: meta.cover, duration: meta.duration,
     });
     renderList();
   } catch (e) {
     toast('播放失败：' + e.message);
+  }
+}
+
+// 右键 / 入口：直接打开某个视频的分 P 面板
+async function pickParts(r) {
+  try {
+    toast('读取分 P 信息…');
+    const meta = (r && r.meta && r.meta.bvid === r.bvid) ? r.meta : await B.video(r.bvid);
+    if (r) r.meta = meta;
+    openPartsPicker(meta, { only: (r && r.page) || 0 });
+  } catch (e) {
+    toast('读取失败：' + e.message);
   }
 }
 
@@ -437,8 +630,21 @@ async function playIndex(i) {
   await playTrack(f.items[i], i);
 }
 
+// 老歌单里可能只有 bvid 没有 cid（或 cid 过期），播放前补齐
+async function ensureCid(it) {
+  if (it.cid) return it.cid;
+  const meta = await B.video(it.bvid);
+  const pg = +it.page || 1;
+  const p = (meta.parts || []).find((x) => +x.page === pg);
+  it.cid = (p && p.cid) || meta.cid;
+  if (!it.cover) it.cover = (p && p.cover) || meta.cover;
+  if (!it.up) it.up = meta.up;
+  return it.cid;
+}
+
 async function playTrack(it, idx) {
   try {
+    await ensureCid(it);
     const p = await B.playurl(it.bvid, it.cid);
     let track;
     if (localStorage.prefFlac === '1' && p.flac) track = p.flac;
@@ -680,6 +886,23 @@ syncQualityBtn();
 $('#go').onclick = handleSearch;
 $('#kw').onkeydown = (e) => { if (e.key === 'Enter') handleSearch(); };
 $('#more').onclick = () => doSearch(S.page + 1, true);
+
+// ---------------------------------------------------------------- 分 P 面板事件
+$('#pmCancel').onclick = closePartsPicker;
+$('#partsModal').onclick = (e) => { if (e.target.id === 'partsModal') closePartsPicker(); };
+$('#pmAdd').onclick = () => pmCommit(false);
+$('#pmPlay').onclick = () => pmCommit(true);
+$('#pmAll').onclick = () => pmSetCheck(() => true);
+$('#pmNone').onclick = () => pmSetCheck(() => false);
+$('#pmInvert').onclick = () => pmSetCheck((el) => !el.querySelector('input').checked);
+$('#pmSwitch').onclick = () => {
+  pmMode = pmMode === 'parts' ? 'season' : 'parts';
+  openPartsPicker(pmMeta, { mode: pmMode });
+};
+function pmSetCheck(fn) {
+  $$('#pmList .part-row').forEach((el) => { el.querySelector('input').checked = !!fn(el); });
+  pmUpdateSum();
+}
 $('#playAll').onclick = () => playIndex(0);
 
 $('#nfBtn').onclick = () => {
