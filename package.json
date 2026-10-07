@@ -1,6 +1,6 @@
 {
   "name": "ccmusic",
-  "version": "1.3.0-beta.5",
+  "version": "1.3.0",
   "description": "ccMusic — B 站纯音频连播桌面端：只取音频轨流式播放，自定义收藏夹自动连播",
   "main": "main.js",
   "scripts": {
@@ -23,7 +23,7 @@
     "appId": "com.ccmusic.app",
     "productName": "ccMusic",
     "directories": {
-      "output": "release-v1.2.0"
+      "output": "release-v1.3.0"
     },
     "artifactName": "${productName}-Setup-${version}.${ext}",
     "publish": {
