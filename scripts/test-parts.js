@@ -90,6 +90,32 @@ async function getWin() {
   })`);
   log('[5] 再次打开(应全部标记已在歌单且不勾选):', JSON.stringify(again));
 
+  // 6. 仅播放：只进播放列表，收藏夹数量必须不变
+  const before = await run(`folder().items.length`);
+  await run(`$('#pmAll').click()`);
+  await wait(200);
+  await run(`$('#pmPlayOnly').click()`);
+  await wait(3500);
+  const only = await run(`({
+    libCount: folder().items.length,
+    queue: S.queue.length, qcur: S.qcur,
+    playing: !audio.paused,
+    bTitle: document.querySelector('#bTitle').textContent,
+    badge: document.querySelector('#qBadge') && document.querySelector('#qBadge').textContent,
+  })`);
+  log('[6] 仅播放（收藏夹应仍为', before, '）:', JSON.stringify(only));
+
+  // 7. 打开播放列表面板并截图
+  await run(`$('#queuePanel').hidden = false; renderQueue()`);
+  await wait(400);
+  const panel2 = await run(`({
+    open: !document.querySelector('#queuePanel').hidden,
+    rows: document.querySelectorAll('#queueList .q-row').length,
+    onRow: document.querySelectorAll('#queueList .q-row.on').length,
+    info: document.querySelector('#qInfo').textContent,
+  })`);
+  log('[7] 播放列表面板:', JSON.stringify(panel2));
+
   fs.mkdirSync(path.dirname(OUT), { recursive: true });
   const img = await win.webContents.capturePage();
   fs.writeFileSync(OUT, img.toPNG());

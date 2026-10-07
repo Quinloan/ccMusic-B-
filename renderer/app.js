@@ -9,9 +9,11 @@ const audio = $('#audio');
 
 const S = {
   view: 'library',
-  folders: [],
+  folders: [],   // 收藏夹：持久歌单，手动整理
   active: null,
   cur: -1,
+  queue: [],     // 播放列表：当前正在播的临时队列，不进收藏夹
+  qcur: -1,      // 队列中正在播放的下标
   mode: 'loop', // loop | single | shuffle
   results: [],
   kw: '',
@@ -30,7 +32,8 @@ const fmt = (sec) => {
 const fmtDur = (d) => (typeof d === 'number' ? fmt(d) : String(d || ''));
 const fmtPlay = (n) => (n >= 10000 ? (n / 10000).toFixed(1) + ' 万' : String(n ?? 0));
 const folder = () => S.folders.find((f) => f.id === S.active);
-const save = () => B.setLibrary({ folders: S.folders, active: S.active });
+const save = () =>
+  B.setLibrary({ folders: S.folders, active: S.active, queue: S.queue, qcur: S.qcur });
 
 let toastTimer;
 function toast(msg) {
@@ -110,9 +113,13 @@ async function init() {
     S.active = 'f1';
     save();
   }
+  // 播放列表：上次退出时的队列，恢复但不自动播放
+  S.queue = Array.isArray(lib?.queue) ? lib.queue.filter((x) => x && x.bvid) : [];
+  S.qcur = Number.isInteger(lib?.qcur) && lib.qcur < S.queue.length ? lib.qcur : -1;
   audio.volume = 0.8;
   renderFolders();
   renderList();
+  renderQueue();
   mark('首屏渲染完成');
   setTimeout(checkLogin, 350); // 登录状态走网络，错开首屏渲染
 }
@@ -284,6 +291,7 @@ function renderList() {
       const it = f.items[i];
       showCtxMenu(e.clientX, e.clientY, [
         { label: '播放', action: () => playIndex(i) },
+        { label: '加入播放列表', action: () => qToastAdd([it]) },
         { label: '该视频的全部分 P…', action: () => openPartsOfVideo(it.bvid) },
         { label: '在浏览器打开 B 站页面', action: () => B.openExternal('https://www.bilibili.com/video/' + it.bvid) },
         { label: '复制视频链接', action: () => { B.copyText('https://www.bilibili.com/video/' + it.bvid); toast('链接已复制'); } },
@@ -326,6 +334,10 @@ function renderResults(append = false) {
       showCtxMenu(e.clientX, e.clientY, [
         { label: '播放', action: () => playSearchItem(r) },
         { label: '加入收藏夹', action: () => addToFolder(r) },
+      { label: '加入播放列表', action: () => qToastAdd([{
+        bvid: r.bvid, page: r.page || 1, title: r.title, vtitle: r.title,
+        up: r.author, cover: r.pic, duration: r.duration,
+      }]) },
       { label: '选择分 P / 合辑…', action: () => pickParts(r) },
         { label: '在浏览器打开 B 站页面', action: () => B.openExternal('https://www.bilibili.com/video/' + r.bvid) },
         { label: '复制视频链接', action: () => { B.copyText('https://www.bilibili.com/video/' + r.bvid); toast('链接已复制'); } },
@@ -471,10 +483,9 @@ function pmUpdateSum() {
   const all = pmEntries();
   const sec = all.filter((e) => keys.has(e.key)).reduce((s, e) => s + (e.duration || 0), 0);
   $('#pmSum').textContent = `已选 ${keys.size} 首 · ${fmtTotal(sec)}`;
-  $('#pmAdd').textContent = keys.size ? `加入 ${keys.size} 首` : '加入歌单';
-  $('#pmPlay').textContent = keys.size ? `加入并播放 ${keys.size} 首` : '加入并播放';
   $('#pmAdd').disabled = !keys.size;
   $('#pmPlay').disabled = !keys.size;
+  $('#pmPlayOnly').disabled = !keys.size;
 }
 
 function pmRenderList() {
@@ -536,30 +547,46 @@ function closePartsPicker() {
   pmMeta = null;
 }
 
-async function pmCommit(withPlay) {
+// action: 'play' 仅播放（不动收藏夹） | 'add' 加入歌单 | 'addplay' 加入并播放
+async function pmCommit(action) {
   const keys = new Set(pmSelectedKeys());
   if (!keys.size) return toast('至少选一个分 P');
-  const f = folder();
-  if (!f) return toast('先建一个收藏夹');
-  const all = pmEntries().filter((e) => keys.has(e.key));
-  let added = 0, dup = 0;
-  for (const e of all) {
-    if (f.items.some((x) => itemKey(x) === e.key)) { dup++; continue; }
-    f.items.push({
+  const all = pmEntries()
+    .filter((e) => keys.has(e.key))
+    .map((e) => ({
       bvid: e.bvid, cid: e.cid, page: e.page,
       title: e.name, vtitle: e.vtitle || e.name,
       up: e.up, cover: e.cover, duration: e.duration,
-    });
+    }));
+  closePartsPicker();
+
+  if (action === 'play') {
+    // 仅播放：只放进播放列表，收藏夹一个字都不动
+    loadQueue(all, 0);
+    await playQueueAt(0);
+    toast(`${all.length} 首已进入播放列表（未加入收藏夹）`);
+    return;
+  }
+
+  const f = folder();
+  if (!f) return toast('先建一个收藏夹');
+  let added = 0, dup = 0;
+  for (const it of all) {
+    if (f.items.some((x) => itemKey(x) === itemKey(it))) { dup++; continue; }
+    f.items.push(it);
     added++;
   }
   save(); renderFolders(); renderList();
-  closePartsPicker();
   toast(`已加入 ${added} 首到《${f.name}》${dup ? `（${dup} 首已存在，已跳过）` : ''}`);
-  if (!added && !withPlay) return;
-  showView('library');
-  if (withPlay) {
-    const first = f.items.find((x) => keys.has(itemKey(x)));
-    if (first) await playTrack(first, f.items.indexOf(first));
+
+  if (action === 'addplay') {
+    if (!added && !dup) return;
+    showView('library');
+    const f2 = folder();
+    let idx = f2.items.findIndex((x) => keys.has(itemKey(x)));
+    if (idx < 0) idx = 0;
+    loadQueue(f2.items, idx); // 加入后从歌单续播
+    await playQueueAt(idx);
   }
 }
 
@@ -600,11 +627,12 @@ async function playSearchItem(r) {
     if ((meta.parts || []).length > 1) {
       return openPartsPicker(meta, { only: r.page || 0, play: true });
     }
-    S.cur = -1;
-    await playTrack({
+    // 单 P：只进播放列表，不动收藏夹
+    loadQueue([{
       bvid: meta.bvid, cid: meta.cid, page: 1, title: meta.title, vtitle: meta.title,
       up: meta.up, cover: meta.cover, duration: meta.duration,
-    });
+    }], 0);
+    await playQueueAt(0);
     renderList();
   } catch (e) {
     toast('播放失败：' + e.message);
@@ -623,11 +651,112 @@ async function pickParts(r) {
   }
 }
 
+// ---------------------------------------------------------------- 播放列表（队列）
+// 与收藏夹分离：只播放不入库的曲目放这里，连播 / 上一首 / 下一首都以它为准
+function syncQueueBtn() {
+  const btn = $('#qBtn');
+  if (!btn) return;
+  const n = S.queue.length;
+  btn.classList.toggle('on', n > 0);
+  const b = $('#qBadge');
+  if (b) { b.textContent = n > 99 ? '99+' : String(n); b.hidden = !n; }
+}
+
+function renderQueue() {
+  const box = $('#queueList');
+  if (!box) return;
+  if (!S.queue.length) {
+    box.innerHTML =
+      '<div class="q-empty">播放列表是空的<br/>播放任意歌曲会进入这里<br/>在分 P 面板里选「仅播放」可只播不入库</div>';
+  } else {
+    box.innerHTML = S.queue
+      .map(
+        (it, i) => `<div class="q-row ${i === S.qcur ? 'on' : ''}" data-i="${i}"
+        title="${esc(it.vtitle || it.title)}">
+        <span class="qi">${i === S.qcur ? '▶' : i + 1}</span>
+        <span class="qt">${esc(it.title)}</span>
+        <span class="qd">${fmtDur(it.duration)}</span>
+        <button class="qx" data-x="${i}" title="从播放列表移除">×</button>
+      </div>`
+      )
+      .join('');
+    box.querySelectorAll('.q-row').forEach((el) => {
+      el.onclick = (e) => {
+        if (e.target.dataset.x !== undefined) {
+          e.stopPropagation();
+          removeFromQueue(+e.target.dataset.x);
+          return;
+        }
+        playQueueAt(+el.dataset.i);
+      };
+    });
+  }
+  const info = $('#qInfo');
+  if (info) {
+    info.textContent = S.queue.length
+      ? `共 ${S.queue.length} 首${S.qcur >= 0 ? ` · 第 ${S.qcur + 1} 首` : ''}`
+      : '';
+  }
+  syncQueueBtn();
+}
+
+// 用一份曲目替换整个播放列表，并从 startIdx 开始（不自动播放）
+function loadQueue(items, startIdx = -1) {
+  S.queue = (items || []).map((it) => ({ ...it }));
+  S.qcur = startIdx >= 0 && startIdx < S.queue.length ? startIdx : -1;
+  save();
+  renderQueue();
+}
+
+function appendQueue(items) {
+  const keys = new Set(S.queue.map(itemKey));
+  const add = (items || []).filter((it) => !keys.has(itemKey(it)));
+  S.queue = S.queue.concat(add.map((it) => ({ ...it })));
+  save();
+  renderQueue();
+  return add.length;
+}
+
+function removeFromQueue(i) {
+  if (i < 0 || i >= S.queue.length) return;
+  S.queue.splice(i, 1);
+  if (S.qcur > i) S.qcur -= 1;
+  else if (S.qcur === i) S.qcur = -1;
+  save();
+  renderQueue();
+}
+
+function clearQueue() {
+  S.queue = [];
+  S.qcur = -1;
+  save();
+  renderQueue();
+}
+
+// 右键「加入播放列表」
+function qToastAdd(items) {
+  const n = appendQueue(items);
+  toast(n ? `已加入播放列表（${n} 首）` : '已经在播放列表里了');
+}
+
+// 播放列表里的第 i 首（同时同步收藏夹列表的高亮）
+async function playQueueAt(i) {
+  if (i < 0 || i >= S.queue.length) return;
+  const it = S.queue[i];
+  const f = folder();
+  const idx = f ? f.items.findIndex((x) => itemKey(x) === itemKey(it)) : -1;
+  await playTrack(it, idx);
+  S.qcur = i;
+  save();
+  renderQueue();
+}
+
 // ---------------------------------------------------------------- 播放
 async function playIndex(i) {
   const f = folder();
   if (i < 0 || i >= f.items.length) return;
-  await playTrack(f.items[i], i);
+  loadQueue(f.items, i); // 从收藏夹起播 = 整张歌单作为播放列表
+  await playQueueAt(i);
 }
 
 // 老歌单里可能只有 bvid 没有 cid（或 cid 过期），播放前补齐
@@ -660,14 +789,28 @@ async function playTrack(it, idx) {
     $('#play').textContent = '⏸';
     B.setTrayTip(it.title); // 托盘悬停时显示当前曲目
     renderList();
+    renderQueue();
   } catch (e) {
     toast('播放失败：' + e.message);
   }
 }
 
+// 上一首 / 下一首：优先走播放列表，没有队列时退回当前收藏夹
 function step(d) {
+  const q = S.queue;
+  if (q.length) {
+    let n;
+    if (S.mode === 'shuffle') {
+      n = Math.floor(Math.random() * q.length);
+    } else {
+      n = S.qcur + d;
+      if (n >= q.length) n = 0;
+      if (n < 0) n = q.length - 1;
+    }
+    return playQueueAt(n);
+  }
   const f = folder();
-  if (!f.items.length) return;
+  if (!f || !f.items.length) return;
   let n;
   if (S.mode === 'shuffle') {
     n = Math.floor(Math.random() * f.items.length);
@@ -890,8 +1033,31 @@ $('#more').onclick = () => doSearch(S.page + 1, true);
 // ---------------------------------------------------------------- 分 P 面板事件
 $('#pmCancel').onclick = closePartsPicker;
 $('#partsModal').onclick = (e) => { if (e.target.id === 'partsModal') closePartsPicker(); };
-$('#pmAdd').onclick = () => pmCommit(false);
-$('#pmPlay').onclick = () => pmCommit(true);
+$('#pmAdd').onclick = () => pmCommit('add');
+$('#pmPlay').onclick = () => pmCommit('addplay');
+$('#pmPlayOnly').onclick = () => pmCommit('play');
+
+// 播放列表面板
+$('#qBtn').onclick = () => {
+  const p = $('#queuePanel');
+  p.hidden = !p.hidden;
+  if (!p.hidden) renderQueue();
+};
+$('#qClose').onclick = () => { $('#queuePanel').hidden = true; };
+$('#qClear').onclick = () => { clearQueue(); toast('播放列表已清空'); };
+$('#qSave').onclick = () => {
+  const f = folder();
+  if (!f) return toast('先建一个收藏夹');
+  if (!S.queue.length) return toast('播放列表是空的');
+  let added = 0;
+  for (const it of S.queue) {
+    if (f.items.some((x) => itemKey(x) === itemKey(it))) continue;
+    f.items.push({ ...it });
+    added++;
+  }
+  save(); renderFolders(); renderList();
+  toast(`已把 ${added} 首存入《${f.name}》`);
+};
 $('#pmAll').onclick = () => pmSetCheck(() => true);
 $('#pmNone').onclick = () => pmSetCheck(() => false);
 $('#pmInvert').onclick = () => pmSetCheck((el) => !el.querySelector('input').checked);

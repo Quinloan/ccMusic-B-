@@ -191,6 +191,22 @@
       </section>
     </main>
   </div>
+
+  <aside id="queuePanel" class="qpanel" hidden>
+    <div class="qp-head">
+      <b>播放列表</b>
+      <span class="muted" id="qInfo"></span>
+      <span class="grow"></span>
+      <button id="qClose" class="q-close" title="收起">×</button>
+    </div>
+    <div id="queueList" class="qp-list"></div>
+    <div class="qp-foot">
+      <span class="muted qp-tip">不影响收藏夹</span>
+      <span class="grow"></span>
+      <button id="qClear" class="mini">清空</button>
+      <button id="qSave" class="mini">存入收藏夹</button>
+    </div>
+  </aside>
 </div>
 
 <footer class="bar">
@@ -204,6 +220,13 @@
     <button id="play" class="primary" title="播放/暂停">▶</button>
     <button id="next" title="下一首">⏭</button>
     <button id="mode" title="播放模式">🔁</button>
+    <button id="qBtn" class="q-btn" title="播放列表">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M4 6h11"></path><path d="M4 12h11"></path><path d="M4 18h7"></path>
+        <path d="M18 10v8"></path><circle cx="17" cy="17" r="2"></circle>
+      </svg>
+      <span id="qBadge" class="q-badge" hidden></span>
+    </button>
   </div>
   <div class="seek">
     <span class="time" id="cur">00:00</span>
@@ -240,10 +263,11 @@
     </div>
     <div id="pmList" class="parts-list"></div>
     <div class="parts-foot">
-      <span class="muted" id="pmHint">分 P 会按顺序加入当前收藏夹，可连播</span>
+      <span class="muted" id="pmHint">仅播放 = 放进播放列表，不动收藏夹</span>
       <span class="grow"></span>
       <button id="pmCancel">取消</button>
-      <button id="pmAdd" class="primary">加入歌单</button>
+      <button id="pmPlayOnly">仅播放</button>
+      <button id="pmAdd">加入歌单</button>
       <button id="pmPlay" class="primary">加入并播放</button>
     </div>
   </div>

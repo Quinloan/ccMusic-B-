@@ -1,6 +1,6 @@
 {
   "name": "ccmusic",
-  "version": "1.3.0-beta.1",
+  "version": "1.3.0-beta.2",
   "description": "ccMusic — B 站纯音频连播桌面端：只取音频轨流式播放，自定义收藏夹自动连播",
   "main": "main.js",
   "scripts": {
