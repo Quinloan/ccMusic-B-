@@ -673,8 +673,11 @@ function renderQueue() {
       .map(
         (it, i) => `<div class="q-row ${i === S.qcur ? 'on' : ''}" data-i="${i}"
         title="${esc(it.vtitle || it.title)}">
-        <span class="qi">${i === S.qcur ? '▶' : i + 1}</span>
-        <span class="qt">${esc(it.title)}</span>
+        <img class="qcover" src="${esc(it.cover || '')}" loading="lazy" />
+        <span class="qmeta">
+          <span class="qt">${esc(it.title)}</span>
+          <span class="qu">${esc(it.up || '')}</span>
+        </span>
         <span class="qd">${fmtDur(it.duration)}</span>
         <button class="qx" data-x="${i}" title="从播放列表移除">×</button>
       </div>`

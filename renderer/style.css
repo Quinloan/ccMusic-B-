@@ -15,7 +15,7 @@ body {
   font: 14px/1.6 system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
   overflow: hidden; user-select: none;
 }
-.app { display: flex; height: calc(100vh - 76px); }
+.app { display: flex; height: calc(100vh - 76px); position: relative; }
 
 /* 侧栏系统组 */
 .sysnav { padding: 0 8px; }
@@ -336,9 +336,12 @@ button.primary:hover { opacity: .9; color: #fff; }
   padding: 0 3px; border-radius: 8px; background: var(--accent); color: #fff;
   font-size: 10px; line-height: 15px; text-align: center;
 }
+/* 播放列表：悬浮卡片（不挤压主界面），参考网易云样式 */
 .qpanel {
-  flex: 0 0 320px; width: 320px; background: var(--panel);
-  border-left: 1px solid var(--line); display: flex; flex-direction: column;
+  position: absolute; top: 72px; right: 14px; bottom: 14px; width: 360px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .14); display: flex; flex-direction: column;
+  z-index: 12; overflow: hidden;
 }
 .qp-head, .qp-foot {
   display: flex; align-items: center; gap: 8px;
@@ -353,20 +356,27 @@ button.primary:hover { opacity: .9; color: #fff; }
   color: var(--muted); font-size: 18px; line-height: 1; cursor: pointer; border-radius: 6px;
 }
 .q-close:hover { background: var(--bg); color: var(--text); }
-.qp-list { flex: 1; overflow-y: auto; padding: 6px; }
+.qp-list { flex: 1; overflow-y: auto; padding: 6px 10px; }
 .q-row {
-  display: flex; align-items: center; gap: 8px; padding: 7px 8px;
-  border-radius: 7px; cursor: pointer;
+  display: flex; align-items: center; gap: 10px; padding: 6px 8px;
+  border-radius: 8px; cursor: pointer;
 }
 .q-row:hover { background: var(--bg); }
 .q-row.on { background: var(--accent-soft); }
-.q-row .qi { flex: 0 0 20px; font-size: 11px; color: var(--muted); text-align: right; }
-.q-row.on .qi { color: var(--accent); }
+.q-row .qcover {
+  width: 40px; height: 40px; border-radius: 6px; object-fit: cover;
+  background: var(--line); flex: 0 0 40px;
+}
+.q-row .qmeta { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .q-row .qt {
-  flex: 1; min-width: 0; font-size: 12.5px;
+  font-size: 12.5px; line-height: 1.35;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .q-row.on .qt { color: var(--accent); font-weight: 600; }
+.q-row .qu {
+  font-size: 11.5px; color: var(--muted); line-height: 1.35;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .q-row .qd { flex: 0 0 auto; font-size: 11.5px; color: var(--muted); }
 .q-row .qx {
   flex: 0 0 auto; width: 20px; height: 20px; padding: 0; border: none;
