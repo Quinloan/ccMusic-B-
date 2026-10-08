@@ -134,58 +134,15 @@
             <a id="relLink" class="plink">GitHub Releases</a>
           </div>
 
-          <div class="sec" id="playSettings">
-            <div class="sec-title">播放控制</div>
-            <div class="sec-desc">窗口不在前台时也能控制播放，关闭窗口后继续在托盘后台播放</div>
-            <div class="card">
-              <div class="row-line">
-                <div class="rl-main"><b>开机自启动</b><div class="muted">登录系统后自动运行 ccMusic（缩到托盘）</div></div>
-                <div class="rl-actions">
-                  <label class="switch"><input type="checkbox" id="autoLaunch" /><span class="slider"></span></label>
-                </div>
-              </div>
-              <div class="row-line">
-                <div class="rl-main"><b>全局媒体键</b><div class="muted">键盘上的播放/暂停、上一首、下一首全局生效</div></div>
-                <div class="rl-actions">
-                  <label class="switch"><input type="checkbox" id="mediaKeys" /><span class="slider"></span></label>
-                </div>
-              </div>
-              <div class="row-line">
-                <div class="rl-main"><b>关闭按钮行为</b><div class="muted">点右上角 × 时的动作</div></div>
-                <div class="rl-actions">
-                  <select id="closeAction" class="sel" title="点右上角 × 时的动作">
-                    <option value="tray">最小化到托盘</option>
-                    <option value="quit">退出应用</option>
-                  </select>
-                </div>
-              </div>
-              <div class="row-line">
-                <div class="rl-main"><b>退出 ccMusic</b><div class="muted">也可用托盘右键菜单退出</div></div>
-                <div class="rl-actions"><button id="quitBtn">退出</button></div>
-              </div>
-            </div>
-          </div>
-
           <div class="sec">
-            <div class="sec-title">更新设置</div>
-            <div class="sec-desc">新版本自动检查下载，完成后提示重启更新</div>
+            <div class="sec-title">设置</div>
+            <div class="sec-desc">播放控制、音质与更新都集中在这里</div>
             <div class="card">
               <div class="row-line">
-                <div class="rl-main"><b>检查更新</b><div class="muted">从 GitHub Releases 检查新版本</div></div>
-                <div class="rl-actions"><button id="checkBtn">检查更新</button></div>
-              </div>
-              <div class="row-line">
-                <div class="rl-main"><b>自动检查</b><div class="muted">启动后自动检查并后台下载新版本</div></div>
-                <div class="rl-actions">
-                  <label class="switch"><input type="checkbox" id="autoCheck" /><span class="slider"></span></label>
-                </div>
-              </div>
-              <div class="row-line">
-                <div class="rl-main"><b>最近检查</b></div>
-                <span class="muted" id="lastCheck">从未</span>
+                <div class="rl-main"><b>打开设置</b><div class="muted">以悬浮面板打开全部设置项</div></div>
+                <div class="rl-actions"><button id="openSettingsBtn">打开设置</button></div>
               </div>
             </div>
-            <div id="updateResult"></div>
           </div>
         </div>
       </section>
@@ -269,6 +226,87 @@
       <button id="pmPlayOnly">仅播放</button>
       <button id="pmAdd">加入歌单</button>
       <button id="pmPlay" class="primary">加入并播放</button>
+    </div>
+  </div>
+</div>
+
+<div id="settingsModal" class="modal" hidden>
+  <div class="modal-box settings-box">
+    <div class="set-head">
+      <b>设置</b>
+      <span class="muted" id="setVer"></span>
+      <span class="grow"></span>
+      <button id="settingsClose" class="q-close" title="关闭">×</button>
+    </div>
+    <div class="set-body">
+
+      <div class="sec" id="playSettings">
+        <div class="sec-title">播放控制</div>
+        <div class="sec-desc">窗口不在前台时也能控制播放，关闭窗口后继续在托盘后台播放</div>
+        <div class="card">
+          <div class="row-line">
+            <div class="rl-main"><b>开机自启动</b><div class="muted">登录系统后自动运行 ccMusic（缩到托盘）</div></div>
+            <div class="rl-actions">
+              <label class="switch"><input type="checkbox" id="autoLaunch" /><span class="slider"></span></label>
+            </div>
+          </div>
+          <div class="row-line">
+            <div class="rl-main"><b>全局媒体键</b><div class="muted">键盘上的播放/暂停、上一首、下一首全局生效</div></div>
+            <div class="rl-actions">
+              <label class="switch"><input type="checkbox" id="mediaKeys" /><span class="slider"></span></label>
+            </div>
+          </div>
+          <div class="row-line">
+            <div class="rl-main"><b>关闭按钮行为</b><div class="muted">点右上角 × 时的动作</div></div>
+            <div class="rl-actions">
+              <select id="closeAction" class="sel" title="点右上角 × 时的动作">
+                <option value="tray">最小化到托盘</option>
+                <option value="quit">退出应用</option>
+              </select>
+            </div>
+          </div>
+          <div class="row-line">
+            <div class="rl-main"><b>退出 ccMusic</b><div class="muted">也可用托盘右键菜单退出</div></div>
+            <div class="rl-actions"><button id="quitBtn">退出</button></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">音质</div>
+        <div class="sec-desc">与底部「无损优先」按钮是同一个开关，两侧会同步</div>
+        <div class="card">
+          <div class="row-line">
+            <div class="rl-main"><b>无损优先</b><div class="muted">有 FLAC 就播 FLAC，没有则取能取到的最高音质</div></div>
+            <div class="rl-actions">
+              <label class="switch"><input type="checkbox" id="prefFlac" /><span class="slider"></span></label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">更新设置</div>
+        <div class="sec-desc">新版本自动检查下载，完成后提示重启更新</div>
+        <div class="card">
+          <div class="row-line">
+            <div class="rl-main"><b>检查更新</b><div class="muted">从 GitHub Releases 检查新版本</div></div>
+            <div class="rl-actions"><button id="checkBtn">检查更新</button></div>
+          </div>
+          <div class="row-line">
+            <div class="rl-main"><b>自动检查</b><div class="muted">启动后自动检查并后台下载新版本</div></div>
+            <div class="rl-actions">
+              <label class="switch"><input type="checkbox" id="autoCheck" /><span class="slider"></span></label>
+            </div>
+          </div>
+          <div class="row-line">
+            <div class="rl-main"><b>最近检查</b></div>
+            <span class="muted" id="lastCheck">从未</span>
+          </div>
+        </div>
+        <div id="updateResult"></div>
+      </div>
+
     </div>
   </div>
 </div>

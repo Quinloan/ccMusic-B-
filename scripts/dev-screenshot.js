@@ -12,6 +12,7 @@ const testBack = process.argv.includes('--back');
 const demo = process.argv.includes('--demo');
 const search = process.argv.includes('--search');
 const openQueue = process.argv.includes('--queue');
+const openSettings = process.argv.includes('--settings');
 
 // 演示数据注入脚本（在渲染进程执行）
 const DEMO_JS = `
@@ -158,6 +159,12 @@ app.whenReady().then(async () => {
       "document.querySelector('#queuePanel').hidden = false; renderQueue(); 'ok'"
     );
     await new Promise((r) => setTimeout(r, 300));
+  }
+  if (openSettings) {
+    await win.webContents.executeJavaScript(
+      "typeof openSettings === 'function' ? (openSettings(), 'ok') : 'no-fn'"
+    );
+    await new Promise((r) => setTimeout(r, 500));
   }
   if (openMenu) {
     await win.webContents.executeJavaScript(

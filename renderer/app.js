@@ -202,13 +202,8 @@ function openAccountMenu() {
         m.hidden = true;
         const act = el.dataset.act;
         if (act === 'diag' || act === 'about') showView(act);
-        else if (act === 'settings') {
-          showView('about'); // 设置集中在「关于」页的播放控制 / 更新设置区
-          setTimeout(() => {
-            const el = $('#playSettings');
-            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }, 40);
-        } else if (act === 'login') openLogin();
+        else if (act === 'settings') openSettings();
+        else if (act === 'login') openLogin();
         else if (act === 'logout') {
           await B.logout();
           toast('已退出登录');
@@ -639,6 +634,26 @@ async function playSearchItem(r) {
   }
 }
 
+// ---------------------------------------------------------------- 设置面板（居中悬浮卡片）
+async function openSettings() {
+  const m = $('#settingsModal');
+  m.hidden = false;
+  // 打开时同步一次真实状态，避免和主进程 / 底部按钮不一致
+  $('#mediaKeys').checked = localStorage.mediaKeys !== '0';
+  $('#closeAction').value = localStorage.closeToTray !== '0' ? 'tray' : 'quit';
+  $('#autoCheck').checked = localStorage.autoCheck !== '0';
+  $('#prefFlac').checked = localStorage.prefFlac === '1';
+  $('#lastCheck').textContent = localStorage.lastCheckAt || '从未';
+  try {
+    $('#autoLaunch').checked = !!(await B.getAutoLaunch());
+  } catch (e) {
+    $('#autoLaunch').checked = false;
+  }
+}
+function closeSettings() {
+  $('#settingsModal').hidden = true;
+}
+
 // 右键 / 入口：直接打开某个视频的分 P 面板
 async function pickParts(r) {
   try {
@@ -951,15 +966,9 @@ async function doCheck(silent = false) {
 async function initAbout() {
   const env = await B.diagEnv();
   $('#aboutVer').textContent = 'v' + env.version;
+  const sv = $('#setVer');
+  if (sv) sv.textContent = 'v' + env.version;
   $('#relLink').onclick = () => B.openExternal('https://github.com/' + env.repo + '/releases');
-  $('#autoCheck').checked = localStorage.autoCheck !== '0';
-  $('#mediaKeys').checked = localStorage.mediaKeys !== '0';
-  $('#closeAction').value = localStorage.closeToTray !== '0' ? 'tray' : 'quit';
-  try {
-    $('#autoLaunch').checked = !!(await B.getAutoLaunch());
-  } catch (e) {
-    $('#autoLaunch').checked = false;
-  }
 }
 
 // ---------------------------------------------------------------- 事件
@@ -1008,6 +1017,15 @@ $('#exportDiag').onclick = async () => {
   toast('已导出到桌面');
 };
 $('#checkBtn').onclick = () => doCheck(false);
+$('#openSettingsBtn').onclick = openSettings;
+$('#settingsClose').onclick = closeSettings;
+$('#settingsModal').onclick = (e) => { if (e.target.id === 'settingsModal') closeSettings(); };
+$('#prefFlac').onchange = () => {
+  const on = $('#prefFlac').checked;
+  localStorage.prefFlac = on ? '1' : '0';
+  syncQualityBtn();
+  toast(on ? '已开启无损优先（下一首生效）' : '已关闭无损优先');
+};
 $('#autoCheck').onchange = () => {
   localStorage.autoCheck = $('#autoCheck').checked ? '1' : '0';
   toast($('#autoCheck').checked ? '已开启自动检查' : '已关闭自动检查');
@@ -1139,11 +1157,18 @@ $('#loginClose').onclick = () => {
 };
 $('#quality').onclick = () => {
   localStorage.prefFlac = localStorage.prefFlac === '1' ? '0' : '1';
+  const pf = $('#prefFlac'); // 设置面板开着时保持两侧一致
+  if (pf) pf.checked = localStorage.prefFlac === '1';
   syncQualityBtn();
   toast(localStorage.prefFlac === '1' ? '已开启无损优先（下一首生效）' : '已关闭无损优先');
 };
 
 document.onkeydown = (e) => {
+  if (e.key === 'Escape') {
+    if (!$('#settingsModal').hidden) return closeSettings();
+    if (!$('#partsModal').hidden) return closePartsPicker();
+    if (!$('#loginModal').hidden) return $('#loginClose').click();
+  }
   if (e.code === 'Space' && e.target.tagName !== 'INPUT') {
     e.preventDefault();
     $('#play').click();
