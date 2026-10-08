@@ -228,13 +228,19 @@ ipcMain.handle('bili:video', async (_e, id) => {
   const j = await apiGet(API, '/x/web-interface/view', param);
   if (!j || j.code !== 0) throw new Error((j && j.message) || '视频信息获取失败');
   const d = j.data;
+  // UP 主常给分 P 起名「001.歌名」「02 - 歌名」，展示时把序号前缀去掉（P 号徽标已表达顺序）
+  const cleanPartTitle = (s) => {
+    const t = String(s || '').replace(/^\s*\d{1,4}\s*[.\-—_、·]+\s*/, '').trim();
+    return t || String(s || '');
+  };
   // 分 P：一个视频可能有几十上百个 P，每个 P 有独立 cid/标题/时长，必须逐个可播
+  // 封面统一用视频主封面（分 P 的 first_frame 常是黑帧，观感差）
   const parts = (d.pages || []).map((p) => ({
     cid: p.cid,
     page: p.page,
-    part: p.part || ('P' + p.page),
+    part: cleanPartTitle(p.part) || ('P' + p.page),
     duration: p.duration || 0,
-    cover: p.first_frame || d.pic,
+    cover: d.pic,
   }));
   // 视频合集（跨多个 BV 的「合集」），有就一并返回，让 UI 能一次性列出
   let season = null;
@@ -249,7 +255,7 @@ ipcMain.handle('bili:video', async (_e, id) => {
           aid: ep.aid,
           cid: ep.cid,
           page: ep.page || 1,
-          title: ep.title || (ep.arc && ep.arc.title) || '',
+          title: cleanPartTitle(ep.title || (ep.arc && ep.arc.title) || ''),
           duration: (ep.arc && ep.arc.duration) || ep.duration || 0,
           cover: (ep.arc && ep.arc.pic) || ep.cover || d.pic,
           up: (ep.arc && ep.arc.author && ep.arc.author.name) || (d.owner ? d.owner.name : ''),

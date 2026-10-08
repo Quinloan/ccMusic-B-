@@ -122,6 +122,7 @@ async function init() {
   renderQueue();
   mark('首屏渲染完成');
   setTimeout(checkLogin, 350); // 登录状态走网络，错开首屏渲染
+setTimeout(migrateOldPartItems, 1200); // 旧多P条目（黑帧封面/序号标题）后台静默修复
 }
 
 const LOGO_SRC = '../assets/icon.png';
@@ -790,16 +791,51 @@ function pickTrack(p) {
 // 按钮文字恒为「无损优先」，亮/不亮表达开关；真实码率只放进悬浮提示
 let curKbps = 0;
 
-// 老歌单里可能只有 bvid 没有 cid（或 cid 过期），播放前补齐
+// 老数据修复判定：缺 cid、封面还是分P黑帧（storyff）、或标题带「001.」序号前缀
+function needsMetaFix(it) {
+  return !it.cid
+    || /storyff/.test(it.cover || '')
+    || /^\s*\d{1,4}\s*[.\-—_、·]/.test(it.title || '');
+}
+
 async function ensureCid(it) {
-  if (it.cid) return it.cid;
+  if (!needsMetaFix(it)) return it.cid;
   const meta = await B.video(it.bvid);
   const pg = +it.page || 1;
   const p = (meta.parts || []).find((x) => +x.page === pg);
   it.cid = (p && p.cid) || meta.cid;
-  if (!it.cover) it.cover = (p && p.cover) || meta.cover;
+  it.cover = meta.cover; // 统一用视频主封面，与首页一致
+  if (p && p.part) it.title = p.part; // 已清洗过序号的分P名
   if (!it.up) it.up = meta.up;
   return it.cid;
+}
+
+// 启动后后台迁移：把旧版加入的多P条目（黑帧封面/带序号标题）批量修正
+async function migrateOldPartItems() {
+  const bad = new Set();
+  const scan = (list) => (list || []).forEach((it) => { if (needsMetaFix(it)) bad.add(it.bvid); });
+  S.folders.forEach((f) => scan(f.items));
+  scan(S.queue);
+  if (!bad.size) return;
+  for (const bvid of bad) {
+    try {
+      const meta = await B.video(bvid);
+      const fix = (it) => {
+        if (it.bvid !== bvid || !needsMetaFix(it)) return;
+        const p = (meta.parts || []).find((x) => +x.page === (+it.page || 1));
+        it.cid = (p && p.cid) || meta.cid;
+        it.cover = meta.cover;
+        if (p && p.part) it.title = p.part;
+        if (!it.up) it.up = meta.up;
+      };
+      S.folders.forEach((f) => f.items.forEach(fix));
+      S.queue.forEach(fix);
+    } catch (e) { /* 单个视频失败就跳过，下次启动再试 */ }
+  }
+  save();
+  renderFolders();
+  renderList();
+  renderQueue();
 }
 
 async function playTrack(it, idx) {
