@@ -276,7 +276,7 @@ function groupHtml(f, start, count, collapsed) {
   const it = f.items[start];
   const vtitle = it.vtitle || it.title;
   const total = f.items.slice(start, start + count).reduce((s, x) => s + (+x.duration || 0), 0);
-  return `<div class="row group" data-bvid="${esc(it.bvid)}" data-start="${start}" data-count="${count}"
+  return `<div class="row group${collapsed ? '' : ' open'}" data-bvid="${esc(it.bvid)}" data-start="${start}" data-count="${count}"
     title="${esc(vtitle)}（共 ${count} 个分 P，点击${collapsed ? '展开' : '收起'}）">
     <div class="gcover">
       <img src="${esc(it.cover || '')}" loading="lazy" />

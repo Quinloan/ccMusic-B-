@@ -268,8 +268,10 @@ button.primary:hover { opacity: .9; color: #fff; }
 .row .acts button { padding: 4px 10px; font-size: 12px; }
 /* 多 P 分组：总行要一眼看出"这是合集，点了能展开" */
 .row.group {
-  background: #f0f5fb; border-left: 3px solid var(--accent);
+  background: transparent; border-left: 3px solid var(--accent);
 }
+/* 展开时组头才高亮；收起态只留蓝条，避免像被选中 */
+.row.group.open { background: var(--accent-soft); }
 .row.group:hover { background: #e6eff9; }
 .row.group .meta { flex: 1; min-width: 0; }
 .row.group .gcover {
