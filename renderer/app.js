@@ -277,11 +277,14 @@ function groupHtml(f, start, count, collapsed) {
   const vtitle = it.vtitle || it.title;
   const total = f.items.slice(start, start + count).reduce((s, x) => s + (+x.duration || 0), 0);
   return `<div class="row group" data-bvid="${esc(it.bvid)}" data-start="${start}" data-count="${count}"
-    title="${esc(vtitle)}">
-    <img src="${esc(it.cover || '')}" loading="lazy" />
+    title="${esc(vtitle)}（共 ${count} 个分 P，点击${collapsed ? '展开' : '收起'}）">
+    <div class="gcover">
+      <img src="${esc(it.cover || '')}" loading="lazy" />
+      <span class="gnum">${count}P</span>
+    </div>
     <div class="meta">
-      <div class="t"><span class="ptag">${count} P</span>${esc(vtitle)}</div>
-      <div class="u">${esc(it.up || '')} · 共 ${fmtTotal(total)}</div>
+      <div class="t"><span class="gtag">合集 ${count}P</span>${esc(vtitle)}</div>
+      <div class="u">${esc(it.up || '')} · 共 ${fmtTotal(total)} · 点击${collapsed ? '展开全部' : '收起'}</div>
     </div>
     <span class="garrow">${collapsed ? '▸' : '▾'}</span>
     <div class="acts">
@@ -387,7 +390,7 @@ function renderList() {
 function renderResults(append = false) {
   const html = S.results.map((r, i) => {
     const playTxt = r.play != null && r.play !== '' ? ` · ${fmtPlay(r.play)}播放` : '';
-    const ptag = r.partsCount > 1 ? `<span class="ptag">${r.partsCount} P</span>` : '';
+    const ptag = r.partsCount > 1 ? `<span class="gtag">合集 ${r.partsCount}P</span>` : '';
     return `<div class="row" data-i="${i}">
       <img src="${r.pic}" loading="lazy" />
       <div class="meta">

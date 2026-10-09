@@ -13,6 +13,7 @@ const demo = process.argv.includes('--demo');
 const search = process.argv.includes('--search');
 const openQueue = process.argv.includes('--queue');
 const openSettings = process.argv.includes('--settings');
+const collapseGroups = process.argv.includes('--collapse');
 
 // 演示数据注入脚本（在渲染进程执行）
 const DEMO_JS = `
@@ -36,16 +37,21 @@ const DEMO_JS = `
     return { bvid: bvid, cid: 1000 + i, title: title, up: up, duration: dur,
              cover: mk(C[i % C.length]) };
   };
+  var partItem = function (bvid, page, title, up, dur, i) {
+    return { bvid: bvid, cid: 2000 + page, page: page, title: title, vtitle: '【周杰伦】50首精选合集',
+             up: up, duration: dur, cover: mk(C[2]) };
+  };
+  // 一个多 P 合集（P1~P6）+ 两首独立歌曲，截图能展示分组折叠
   var f1 = {
     id: 'f1', name: '我的收藏夹', items: [
-      item('BV1a411c7EU', '起风了', '买辣椒也用券', 325, 0),
-      item('BV1b411c7EV', '海阔天空', 'Beyond', 326, 1),
-      item('BV1c411c7EW', '晴天', '周杰伦', 269, 2),
-      item('BV1d411c7EX', 'Lemon', '米津玄師', 256, 3),
-      item('BV1e411c7EY', '夜空中最亮的星', '逃跑计划', 252, 4),
-      item('BV1f411c7EZ', '花海', '周杰伦', 268, 5),
-      item('BV1g411c7F0', '平凡之路', '朴树', 305, 6),
-      item('BV1h411c7F1', '光年之外', 'G.E.M.邓紫棋', 236, 7),
+      partItem('BV1FPjy6TEiE', 1, '周杰伦-晴天', '超级爱下雨天', 270, 0),
+      partItem('BV1FPjy6TEiE', 2, '周杰伦-夜曲', '超级爱下雨天', 227, 1),
+      partItem('BV1FPjy6TEiE', 3, '周杰伦-星晴', '超级爱下雨天', 259, 2),
+      partItem('BV1FPjy6TEiE', 4, '周杰伦-七里香', '超级爱下雨天', 300, 3),
+      partItem('BV1FPjy6TEiE', 5, '周杰伦-花海', '超级爱下雨天', 265, 4),
+      partItem('BV1FPjy6TEiE', 6, '周杰伦-稻香', '超级爱下雨天', 224, 5),
+      item('BV1g411c7F0', '在百万家装录音棚大声听 徐良&小凌《坏女孩》', 'JLRS-LeoFM', 244, 6),
+      item('BV1h411c7F1', '起风了', '买辣椒也用券', 325, 7),
     ],
   };
   var f2 = {
@@ -62,10 +68,12 @@ const DEMO_JS = `
   renderFolders();
   renderList();
   // 顺带把播放列表（队列）也填上，截图层能展示右侧面板
-  f1.items.forEach(function (x) { x.vtitle = f1.name; });
-  S.queue = f1.items.slice(0, 10).map(function (x) { return Object.assign({}, x); });
+  f1.items.forEach(function (x) { if (!x.vtitle) x.vtitle = x.title; });
+  S.queue = f1.items.slice(0, 12).map(function (x) { return Object.assign({}, x); });
   S.qcur = 2;
   renderQueue();
+  localStorage.collapsedVideos = ${collapseGroups ? "JSON.stringify(['BV1FPjy6TEiE'])" : "'[]'"};
+  renderList();
 
   // 底部播放条：伪装成正在播放
   var cover = mk(C[2]);
@@ -172,8 +180,29 @@ app.whenReady().then(async () => {
     );
     await new Promise((r) => setTimeout(r, 400));
   }
+  const diag = await win.webContents.executeJavaScript(`({
+    folders: S.folders.length, items: (folder() || { items: [] }).items.length,
+    rows: document.querySelectorAll('#list .row').length,
+    collapsed: localStorage.collapsedVideos || '',
+  })`).catch((e) => ({ diagErr: e.message }));
+  console.log('diag:', JSON.stringify(diag));
+  console.log('inj-has-toggle:', DEMO_JS.includes('toggleCollapsed'), 'argvCollapse:', process.argv.includes('--collapse'));
   const img = await win.webContents.capturePage();
-  fs.writeFileSync(out, img.toPNG());
-  console.log('saved:', out);
+  const diag2 = await win.webContents.executeJavaScript(`({
+    rows: document.querySelectorAll('#list .row').length,
+    folders: (window.S && S.folders || []).length,
+    t: Math.round(performance.now()),
+  })`).catch((e) => ({ diagErr: e.message }));
+  console.log('diag2:', JSON.stringify(diag2));
+  // capturePage 偶发拍到空白帧（合成器未重绘），多拍几张取字节最大的那张
+  let best = img.toPNG();
+  for (let k = 0; k < 4; k++) {
+    const shot = await win.webContents.capturePage();
+    const buf = shot.toPNG();
+    if (buf.length > best.length) best = buf;
+    await new Promise((r) => setTimeout(r, 350));
+  }
+  fs.writeFileSync(out, best);
+  console.log('saved:', out, Math.round(best.length / 1024) + 'KB');
   app.exit(0);
 });

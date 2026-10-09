@@ -266,9 +266,42 @@ button.primary:hover { opacity: .9; color: #fff; }
 .row .acts { display: flex; gap: 6px; opacity: 0; }
 .row:hover .acts { opacity: 1; }
 .row .acts button { padding: 4px 10px; font-size: 12px; }
-/* 多 P 分组：总行 + 展开后的子行缩进 */
-.row.group .garrow { flex: 0 0 auto; margin: 0 2px; color: var(--muted); font-size: 13px; }
-.row.group:hover .garrow { color: var(--accent); }
+/* 多 P 分组：总行要一眼看出"这是合集，点了能展开" */
+.row.group {
+  background: #f0f5fb; border-left: 3px solid var(--accent);
+}
+.row.group:hover { background: #e6eff9; }
+.row.group .meta { flex: 1; min-width: 0; }
+.row.group .gcover {
+  position: relative; flex: 0 0 56px; height: 52px; margin-right: 4px;
+}
+.row.group .gcover img {
+  width: 52px; height: 52px; border-radius: 6px; object-fit: cover;
+  position: relative; z-index: 2; background: var(--line);
+}
+/* 封面"一摞"叠层 */
+.row.group .gcover::before, .row.group .gcover::after {
+  content: ''; position: absolute; top: 3px; left: 0; width: 52px; height: 52px;
+  border-radius: 6px; background: #fff; border: 1px solid #d8dee8;
+}
+.row.group .gcover::before { transform: translate(3px, -3px); z-index: 1; }
+.row.group .gcover::after { transform: translate(6px, -6px); z-index: 0; opacity: .65; }
+.row.group .gnum {
+  position: absolute; right: 2px; bottom: 2px; z-index: 3;
+  background: rgba(0, 0, 0, .72); color: #fff; font-size: 10px; line-height: 15px;
+  padding: 0 4px; border-radius: 4px;
+}
+.gtag {
+  display: inline-block; margin-right: 8px; padding: 0 7px; vertical-align: 1px;
+  font-size: 11px; line-height: 17px; background: var(--accent); color: #fff;
+  border-radius: 5px; white-space: nowrap;
+}
+.row.group .garrow {
+  flex: 0 0 22px; height: 22px; margin: 0 6px 0 2px; border-radius: 50%;
+  border: 1px solid var(--accent); background: #fff; color: var(--accent);
+  display: flex; align-items: center; justify-content: center; font-size: 10px;
+}
+.row.group .garrow:hover { background: var(--accent); color: #fff; }
 .row.child { margin-left: 22px; }
 .more-wrap { padding: 12px 24px 24px; text-align: center; }
 
