@@ -266,6 +266,10 @@ button.primary:hover { opacity: .9; color: #fff; }
 .row .acts { display: flex; gap: 6px; opacity: 0; }
 .row:hover .acts { opacity: 1; }
 .row .acts button { padding: 4px 10px; font-size: 12px; }
+/* 多 P 分组：总行 + 展开后的子行缩进 */
+.row.group .garrow { flex: 0 0 auto; margin: 0 2px; color: var(--muted); font-size: 13px; }
+.row.group:hover .garrow { color: var(--accent); }
+.row.child { margin-left: 22px; }
 .more-wrap { padding: 12px 24px 24px; text-align: center; }
 
 /* 右键菜单 */

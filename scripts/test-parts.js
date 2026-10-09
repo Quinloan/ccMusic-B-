@@ -131,6 +131,23 @@ async function getWin() {
   })`);
   log('[7] 播放列表面板:', JSON.stringify(panel2));
 
+  // 8. 歌单分组：组头存在 → 收起 → 只剩组头一行
+  const grp = await run(`(() => {
+    const heads = document.querySelectorAll('#list .row.group');
+    return { heads: heads.length,
+             label: heads[0] ? heads[0].querySelector('.t').textContent.trim() : null,
+             childRows: document.querySelectorAll('#list .row.child').length };
+  })()`);
+  log('[8] 分组渲染:', JSON.stringify(grp));
+  await run(`toggleCollapsed(${JSON.stringify(BVID)})`);
+  await wait(400);
+  const col = await run(`(() => {
+    const g = document.querySelector('#list .row.group');
+    return { allRows: document.querySelectorAll('#list .row').length,
+             arrow: g ? g.querySelector('.garrow').textContent : null };
+  })()`);
+  log('[9] 收起后(应只剩组头, 箭头▸):', JSON.stringify(col));
+
   fs.mkdirSync(path.dirname(OUT), { recursive: true });
   const img = await win.webContents.capturePage();
   fs.writeFileSync(OUT, img.toPNG());

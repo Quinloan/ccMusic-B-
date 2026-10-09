@@ -243,11 +243,11 @@ function renderFolders() {
   });
 }
 
-function rowHtml(it, i) {
+function rowHtml(it, i, extra) {
   const pg = +it.page || 1;
   // 多 P 视频的分 P 条目：标题前带 P 号徽标，悬浮提示所属视频
   const badge = pg > 1 || (it.vtitle && it.vtitle !== it.title) ? `<span class="ptag">P${pg}</span>` : '';
-  return `<div class="row ${i === S.cur ? 'on' : ''}" data-i="${i}" title="${esc(it.vtitle || it.title)}">
+  return `<div class="row ${extra || ''} ${i === S.cur ? 'on' : ''}" data-i="${i}" title="${esc(it.vtitle || it.title)}">
     <img src="${esc(it.cover || '')}" loading="lazy" />
     <div class="meta">
       <div class="t">${badge}${esc(it.title)}</div>
@@ -259,19 +259,82 @@ function rowHtml(it, i) {
     </div></div>`;
 }
 
+// 多 P 条目合并/展开：折叠状态记在 localStorage（按视频 bvid）
+function collapsedSet() {
+  try { return new Set(JSON.parse(localStorage.collapsedVideos || '[]')); }
+  catch (e) { return new Set(); }
+}
+function toggleCollapsed(bvid) {
+  const s = collapsedSet();
+  if (s.has(bvid)) s.delete(bvid); else s.add(bvid);
+  localStorage.collapsedVideos = JSON.stringify([...s]);
+  renderList();
+}
+
+// 多 P 分组的「总行」：收起时就是唯一可见的一行，展开时是组头
+function groupHtml(f, start, count, collapsed) {
+  const it = f.items[start];
+  const vtitle = it.vtitle || it.title;
+  const total = f.items.slice(start, start + count).reduce((s, x) => s + (+x.duration || 0), 0);
+  return `<div class="row group" data-bvid="${esc(it.bvid)}" data-start="${start}" data-count="${count}"
+    title="${esc(vtitle)}">
+    <img src="${esc(it.cover || '')}" loading="lazy" />
+    <div class="meta">
+      <div class="t"><span class="ptag">${count} P</span>${esc(vtitle)}</div>
+      <div class="u">${esc(it.up || '')} · 共 ${fmtTotal(total)}</div>
+    </div>
+    <span class="garrow">${collapsed ? '▸' : '▾'}</span>
+    <div class="acts">
+      <button data-gplay="${start}">播放</button>
+      <button data-grm="${start}" data-count="${count}">移除</button>
+    </div></div>`;
+}
+
 function renderList() {
   const f = folder();
   $('#libTitle').textContent = f.name;
   $('#libCount').textContent = `${f.items.length} 首`;
-  $('#list').innerHTML = f.items.length
-    ? f.items.map((it, i) => rowHtml(it, i)).join('')
-    : '<div class="empty">这个收藏夹还是空的，去上方搜索框找几首加进来</div>';
+  if (!f.items.length) {
+    $('#list').innerHTML = '<div class="empty">这个收藏夹还是空的，去上方搜索框找几首加进来</div>';
+    return;
+  }
+  // 相邻的同视频多 P 条目聚成一组：可合并成一行，也可展开
+  const collapsed = collapsedSet();
+  const isPart = (it) => !!it.vtitle || (+it.page || 1) > 1;
+  let html = '';
+  let i = 0;
+  while (i < f.items.length) {
+    const it = f.items[i];
+    let j = i + 1;
+    if (isPart(it)) {
+      while (j < f.items.length && f.items[j].bvid === it.bvid && isPart(f.items[j])) j++;
+    }
+    if (j - i === 1) {
+      html += rowHtml(it, i);
+    } else {
+      const bid = it.bvid;
+      html += groupHtml(f, i, j - i, collapsed.has(bid));
+      if (!collapsed.has(bid)) {
+        for (let k = i; k < j; k++) html += rowHtml(f.items[k], k, 'child');
+      }
+    }
+    i = j;
+  }
+  $('#list').innerHTML = html;
+  const rmItems = (start, cnt) => {
+    f.items.splice(start, cnt);
+    if (S.cur >= start && S.cur < start + cnt) S.cur = -1;
+    else if (S.cur >= start + cnt) S.cur -= cnt;
+    save(); renderFolders(); renderList();
+  };
   $$('#list .row').forEach((el) => {
     const i = +el.dataset.i;
+    const gp = el.dataset.gplay;
+    const grm = el.dataset.grm;
+    const isGroup = el.dataset.bvid !== undefined;
     el.onclick = (e) => {
-      const rm = e.target.dataset.rm;
-      if (rm !== undefined) {
-        f.items.splice(+rm, 1);
+      if (e.target.dataset.rm !== undefined) {
+        f.items.splice(+e.target.dataset.rm, 1);
         if (S.cur >= f.items.length) S.cur = -1;
         save(); renderFolders(); renderList(); return;
       }
@@ -280,10 +343,34 @@ function renderList() {
         playIndex(+e.target.dataset.play);
         return;
       }
+      if (gp !== undefined) {
+        e.stopPropagation();
+        playIndex(+gp);
+        return;
+      }
+      if (grm !== undefined) {
+        e.stopPropagation();
+        rmItems(+grm, +el.dataset.count);
+        return;
+      }
+      if (isGroup) { toggleCollapsed(el.dataset.bvid); return; }
       playIndex(i);
     };
     el.oncontextmenu = (e) => {
       e.preventDefault();
+      if (isGroup) {
+        const bid = el.dataset.bvid;
+        const start = +el.dataset.start;
+        const cnt = +el.dataset.count;
+        showCtxMenu(e.clientX, e.clientY, [
+          { label: collapsed.has(bid) ? '展开全部 P' : '收起', action: () => toggleCollapsed(bid) },
+          { label: '播放', action: () => playIndex(start) },
+          { label: '在浏览器打开 B 站页面', action: () => B.openExternal('https://www.bilibili.com/video/' + bid) },
+          { label: '复制视频链接', action: () => { B.copyText('https://www.bilibili.com/video/' + bid); toast('链接已复制'); } },
+          { label: '移除全部', action: () => rmItems(start, cnt) },
+        ]);
+        return;
+      }
       const it = f.items[i];
       showCtxMenu(e.clientX, e.clientY, [
         { label: '播放', action: () => playIndex(i) },
