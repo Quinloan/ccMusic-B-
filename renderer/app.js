@@ -731,6 +731,7 @@ async function openSettings() {
   $('#closeAction').value = localStorage.closeToTray !== '0' ? 'tray' : 'quit';
   $('#autoCheck').checked = localStorage.autoCheck !== '0';
   $('#prefFlac').checked = localStorage.prefFlac === '1';
+  $('#volumeBalance').checked = localStorage.volumeBalance !== '0';
   $('#lastCheck').textContent = localStorage.lastCheckAt || '从未';
   try {
     $('#autoLaunch').checked = !!(await B.getAutoLaunch());
@@ -752,6 +753,72 @@ async function pickParts(r) {
   } catch (e) {
     toast('读取失败：' + e.message);
   }
+}
+
+// ---------------------------------------------------------------- 音量平衡（响度均衡）
+// audio → MediaElementSource → DynamicsCompressor → Analyser → Gain → 输出
+// 关闭时跳过压缩器直通；开启时按实测峰值给一个补偿增益，让各曲目响度趋于一致
+let ac = null, srcNode = null, compNode = null, anNode = null, gainNode = null;
+let agcTimer = null;
+
+const balanceOn = () => localStorage.volumeBalance !== '0';
+
+function ensureGraph() {
+  if (ac) return ac;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return null;
+  ac = new AC();
+  srcNode = ac.createMediaElementSource(audio);
+  compNode = ac.createDynamicsCompressor();
+  compNode.threshold.value = -20;
+  compNode.knee.value = 12;
+  compNode.ratio.value = 6;
+  compNode.attack.value = 0.005;
+  compNode.release.value = 0.25;
+  anNode = ac.createAnalyser();
+  anNode.fftSize = 2048;
+  gainNode = ac.createGain();
+  gainNode.gain.value = 1;
+  anNode.connect(gainNode);
+  gainNode.connect(ac.destination);
+  return ac;
+}
+
+function applyBalanceRouting() {
+  if (!ensureGraph()) return;
+  try { srcNode.disconnect(); } catch (e) { /* 首次还没连 */ }
+  try { compNode.disconnect(); } catch (e) { /* 同上 */ }
+  if (balanceOn()) {
+    srcNode.connect(compNode);
+    compNode.connect(anNode);
+  } else {
+    srcNode.connect(anNode);
+  }
+}
+
+// 开播后采样约 5 秒，按峰值中位数算补偿增益（限制 0.6~2 倍，避免爆音）
+function startAgc() {
+  clearInterval(agcTimer);
+  if (!balanceOn() || !anNode) return;
+  if (gainNode) gainNode.gain.value = 1;
+  const buf = new Uint8Array(anNode.fftSize);
+  const peaks = [];
+  let n = 0;
+  agcTimer = setInterval(() => {
+    if (audio.paused) return;
+    anNode.getByteTimeDomainData(buf);
+    let peak = 0;
+    for (let i = 0; i < buf.length; i++) peak = Math.max(peak, Math.abs(buf[i] - 128) / 128);
+    if (peak > 0.02) peaks.push(peak);
+    if (++n >= 12) {
+      clearInterval(agcTimer);
+      if (!peaks.length) return;
+      peaks.sort((a, b) => a - b);
+      const med = peaks[Math.floor(peaks.length / 2)];
+      const g = Math.min(2, Math.max(0.6, 0.5 / med));
+      gainNode.gain.setTargetAtTime(g, ac.currentTime, 0.4);
+    }
+  }, 400);
 }
 
 // ---------------------------------------------------------------- 播放列表（队列）
@@ -933,6 +1000,10 @@ async function playTrack(it, idx) {
     if (idx !== undefined) S.cur = idx;
     audio.src = track.url;
     await audio.play();
+    // 音频图要在真正播放后才建（首次播放有用户手势，AudioContext 才不会被挂起）
+    applyBalanceRouting();
+    if (ac && ac.state === 'suspended') await ac.resume().catch(() => {});
+    startAgc(); // 每首歌重新测一次补偿增益
     $('#bCover').src = it.cover || '';
     $('#bTitle').textContent = it.title;
     $('#bUp').textContent = it.up || it.author || '';
@@ -1143,6 +1214,19 @@ $('#checkBtn').onclick = () => doCheck(false);
 $('#openSettingsBtn').onclick = openSettings;
 $('#settingsClose').onclick = closeSettings;
 $('#settingsModal').onclick = (e) => { if (e.target.id === 'settingsModal') closeSettings(); };
+$('#volumeBalance').onchange = () => {
+  const on = $('#volumeBalance').checked;
+  localStorage.volumeBalance = on ? '1' : '0';
+  applyBalanceRouting();
+  if (on) {
+    if (ac && ac.state === 'suspended') ac.resume().catch(() => {});
+    startAgc();
+  } else {
+    clearInterval(agcTimer);
+    if (gainNode && ac) gainNode.gain.setTargetAtTime(1, ac.currentTime, 0.2);
+  }
+  toast(on ? '已开启音量平衡' : '已关闭音量平衡');
+};
 $('#prefFlac').onchange = () => {
   const on = $('#prefFlac').checked;
   localStorage.prefFlac = on ? '1' : '0';

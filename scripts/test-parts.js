@@ -148,6 +148,22 @@ async function getWin() {
   })()`);
   log('[9] 收起后(应只剩组头, 箭头▸):', JSON.stringify(col));
 
+  // 10. 音量平衡：音频图是否建立、有无信号、补偿增益是否算出来
+  const vb = await run(`(async () => {
+    applyBalanceRouting();
+    startAgc();
+    await new Promise((r) => setTimeout(r, 6000));
+    const buf = new Uint8Array(anNode.fftSize);
+    anNode.getByteTimeDomainData(buf);
+    let peak = 0;
+    for (let i = 0; i < buf.length; i++) peak = Math.max(peak, Math.abs(buf[i] - 128) / 128);
+    return {
+      on: balanceOn(), ctx: ac.state, hasGraph: !!(srcNode && compNode && gainNode),
+      gain: +gainNode.gain.value.toFixed(2), peakNow: +peak.toFixed(3), paused: audio.paused,
+    };
+  })()`);
+  log('[10] 音量平衡(gain≈0.6~2, peakNow>0 表示有信号):', JSON.stringify(vb));
+
   fs.mkdirSync(path.dirname(OUT), { recursive: true });
   const img = await win.webContents.capturePage();
   fs.writeFileSync(OUT, img.toPNG());
