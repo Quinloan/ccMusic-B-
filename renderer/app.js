@@ -116,7 +116,8 @@ async function init() {
   // 播放列表：上次退出时的队列，恢复但不自动播放
   S.queue = Array.isArray(lib?.queue) ? lib.queue.filter((x) => x && x.bvid) : [];
   S.qcur = Number.isInteger(lib?.qcur) && lib.qcur < S.queue.length ? lib.qcur : -1;
-  audio.volume = 0.8;
+  audio.volume = 0.8; // 仍是 80%，滑块位置按曲线反推（约 89）
+  $('#vol').value = posFromVol(0.8);
   renderFolders();
   renderList();
   renderQueue();
@@ -1360,7 +1361,14 @@ audio.ontimeupdate = () => {
 $('#seek').oninput = () => {
   if (audio.duration) audio.currentTime = ($('#seek').value / 1000) * audio.duration;
 };
-$('#vol').oninput = () => (audio.volume = $('#vol').value / 100);
+// 音量走感知曲线：滑块位置 → 音量 = 位置²
+// 线性映射时低端一动就从"还能听"掉到"没声"，平方后低端变化平缓、好微调，高端变化也更明显
+const volFromPos = (pos) => {
+  const t = Math.max(0, Math.min(100, +pos || 0)) / 100;
+  return t * t;
+};
+const posFromVol = (v) => Math.round(Math.sqrt(Math.max(0, Math.min(1, +v || 0))) * 100);
+$('#vol').oninput = () => (audio.volume = volFromPos($('#vol').value));
 $('#loginClose').onclick = () => {
   clearInterval(pollTimer);
   $('#loginModal').hidden = true;

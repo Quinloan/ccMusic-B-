@@ -164,6 +164,16 @@ async function getWin() {
   })()`);
   log('[10] 音量平衡(gain≈0.6~2, peakNow>0 表示有信号):', JSON.stringify(vb));
 
+  // 11. 音量曲线：小声区可微调，不再一拉就没声
+  const vol = await run(`(() => {
+    const s = document.querySelector('#vol');
+    const at = (p) => { s.value = p; s.dispatchEvent(new Event('input')); return +audio.volume.toFixed(3); };
+    const r = { pos5: at(5), pos10: at(10), pos20: at(20), pos50: at(50), pos80: at(80) };
+    s.value = 89; s.dispatchEvent(new Event('input'));
+    return r;
+  })()`);
+  log('[11] 音量曲线(线性时 pos10=0.1/pos20=0.2，平方后更平缓):', JSON.stringify(vol));
+
   fs.mkdirSync(path.dirname(OUT), { recursive: true });
   const img = await win.webContents.capturePage();
   fs.writeFileSync(OUT, img.toPNG());
